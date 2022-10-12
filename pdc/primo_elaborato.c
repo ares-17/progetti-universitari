@@ -120,7 +120,7 @@ void read_input(char **argv, int *strategy, int *id)
 
 /**
  * controlla se x è potenza di due o meno .
- * Esempio : is_power_of_two(4) ritorna 1
+ * @example : is_power_of_two(4) ritorna 1
  * @param x intero su cui effettuare il controllo
  * @return 1 se x è potenza di due , 0 altrimenti
  */
@@ -131,7 +131,7 @@ int is_power_of_two(int x)
 
 /**
  * Esegue i controlli dei warnings su strategia e id. Id è eventualmente modificato.
- * Esempio con strategy = 1 , id = -1 , id è posto a 0.
+ * @example strategy = 1 , id = -1 , id è posto a 0.
  * @param strategy strategy da applicare
  * @param id id specificato
  */
@@ -222,7 +222,7 @@ void check_input(int memum, int *exit_status, int argc, int *strategy, char **ar
 }
 
 /**
- * Configura l'utilizzo della libreria MPI ed assegna , per ogni processore , il proprio memum e in num_procs il numero totale dei processori
+ * Configura l'utilizzo della libreria MPI ed assegna per ogni processore , il proprio memum e in num_procs il numero totale dei processori
  * @param num_elem numero input
  * @param argv tutti i dati passati input
  * @param memum id processo
@@ -236,7 +236,7 @@ void init_MPI(int num_elem, char **argv, int *memum)
 
 /**
  * Calcola il numero di elementi che ogni processo si aspetta di ricevere
- * Esempio : (0,10,NULL,NULL), con num_procs = 2 . Allora num_items_specified = 5 , rest = 0
+ * @example : (0,10,NULL,NULL), con num_procs = 2 . Allora num_items_specified = 5 , rest = 0
  * @param memum id processo
  * @param num_items_specified numero totale passato dall'input degli elementi
  * @param num_data_proc numero di elementi per il processo
@@ -321,8 +321,8 @@ void parse_input(char **argv, int memum, double **data, int num_items_specified)
 }
 
 /**
- * Se la funzione è eseguita con memum == 0, distribuisce gli elementi contenuti in data, ai restanti processori con un ciclo for.
- * Esempio = (0,10,0,[1,2,3,4])
+ * Se la funzione è eseguita con memum == 0, distribuisce gli elementi contenuti in data ai restanti processori con un ciclo for.
+ * @example : (0,10,0,[1,2,3,4])
  * @param memum id processo
  * @param num_data_proc elementi per processore
  * @param rest se presente , per i processi con memum < rest è passato un elemento in più
@@ -477,7 +477,7 @@ void third_strategy(int memum, double *partial_sum)
 
 /**
  * In base a strategy viene deciso quale strategia applicare
- * Esempio (1,0,100)
+ * @example : (1,0,100)
  * @param strategy input strategia
  * @param memum id processo
  * @param local_sum somma parziale che contribuisce alla somma totale
@@ -500,7 +500,7 @@ void communication_strategy(int strategy, int memum, double *local_sum)
 
 /**
  * Viene stampata la somma totale se e solo se:
- * 1. memum == id
+ * 1. memum == id in input
  * 2. se id = -1 ed è indicata la terza strategia così tutti i processi stampano il risultato totale
  * @param memum id processo
  * @param id id del processo che deve stampare
@@ -512,12 +512,11 @@ void print_result(int memum, int id, int strategy, double sum)
         printf("Total sum : %f, printed by %d\n\n", sum, memum);
     }
 }
+
 /**
-*
- @param argv vari input
-*
- @param num_items numero di elementi indicato come primo parametro input
-*/
+ * @param argv vari input
+ * @param num_items numero di elementi indicato come primo parametro input
+ */
 void execute_seq(char **argv, int num_items)
 {
     double *data;
