@@ -11,11 +11,11 @@
 #define TAG_STRATEGY(i) 77 + i
 #define ARE_FEW_ELEMENTS(num_items, num_proc) (num_items / 2) < num_proc
 #define IS_STRATEGY_OUT_OF_RANGE(strategy) strategy<1 || strategy> 3
-#define ERROR_NUM_INPUT "Error : the program needs at least 5 inputs :\n" \ 
-    "1st indicates the number of items to be added\n"                 \
-    "2nd indicates the strategy\n"                                    \
-    "3rd indicates the ID of the process that prints the total sum\n" \
-    "and at least two elements to be added\n"
+#define ERROR_NUM_INPUT "Error : the program needs at least 5 inputs :\n"                 \
+                        "1st indicates the number of items to be added\n"                 \
+                        "2nd indicates the strategy\n"                                    \
+                        "3rd indicates the ID of the process that prints the total sum\n" \
+                        "and at least two elements to be added\n"
 #define ERROR_RANDOM_VALUE "if you want to generate an N number of random elements, then enter :\n" \
                            "1^ as the number N of elements to sum up\n"                             \
                            "2^ the strategy\n"                                                      \
@@ -40,21 +40,25 @@
 #define MIN_TO_GEN_RANDOM_VALUES 21
 #define MAX_VALUE_GEN 100
 #define MIN_VALUE_GEN 1
+#define EXIT_STATUS_ERROR -1
 
 int const MIN_ARG_REQUIRED = 6;
 int num_procs;
+
+int check_num_items_input(int *num_items_input, int argc);
+int check_id(int *id);
+int check_strategy(int *strategy);
+void distribuite_data(int memum, double *data, int num_data_proc, double **recv_buffer);
+void parse_input(char **argv, int memum, int num_data_proc, int num_total_items, double **recv_buffer);
 
 void read_input(char **argv, int *strategy, int *id);
 int is_power_of_two(int x);
 void warnings(int strategy, int *id);
 void check_input(int memum, int *exit_status, int argc, int *strategy, char **argv, int *num_items_input, int *id);
 void init_MPI(int num_elem, char **data, int *memum);
-void calculate_elem_proc(int memum, int num_items_specified, int *num_data_proc, int *rest);
+int calculate_elem_proc(int memum, int num_items_specified, int *rest);
 void read_performance(double start_time_proc, int memum);
 void exponentials(int **exp2);
-void parse_input(char **argv, int memum, double **data, int num_items_specified);
-void distribute_data(int memum, int num_data_proc, int rest, double *data);
-void get_data(int memum, int num_data_proc, double **data);
 void start_performance(double *start_time);
 void local_calculation(double *data, int num_data_proc, double *result);
 void first_strategy(int memum, double *local_sum);
@@ -67,9 +71,9 @@ void execute_seq(char **argv, int num_items);
 int main(int argc, char **argv)
 {
     int memum;
-    int num_data_proc;
+    int num_data_proc = 0;
     int rest;
-    double *data;
+    double *recv_buffer;
     double local_sum;
     double start_time;
     int exit_status = 0;
@@ -83,39 +87,54 @@ int main(int argc, char **argv)
     if (exit_status != 0)
     {
         MPI_Finalize();
-        return 0;
+        free(recv_buffer);
+        MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE); // TODO
     }
     else if (num_procs == 1)
     {
         execute_seq(argv, num_items_input);
+        free(recv_buffer);
         MPI_Finalize();
         return 0;
     }
+    num_data_proc = calculate_elem_proc(memum, num_items_input, &rest);
+    parse_input(argv, memum, num_data_proc, num_items_input, &recv_buffer);
 
-    parse_input(argv, memum, &data, num_items_input);
-    calculate_elem_proc(memum, num_items_input, &num_data_proc, &rest);
-    distribute_data(memum, num_data_proc, rest, data);
-    get_data(memum, num_data_proc, &data);
+    MPI_Finalize();
+    return 0;
+
     start_performance(&start_time);
-    local_calculation(data, num_data_proc, &local_sum);
+    local_calculation(recv_buffer, num_data_proc, &local_sum);
     communication_strategy(strategy, memum, &local_sum);
     print_result(memum, id, strategy, local_sum);
     read_performance(start_time, memum);
 
+    free(recv_buffer);
+
     MPI_Finalize();
 }
 
-/**
- * Deriva i valori da assegnare a strategy e id.
- * La funzione presuppone che in argv[2] ed argv[3] siano presenti dei valori.
- * @param argv array di stringhe da cui ottenere i valori da salvare in strategy e id
- * @param strategy specified strategy
- * @param id specified id
- */
-void read_input(char **argv, int *strategy, int *id)
+void distribuite_data(int memum, double *send_buffer, int num_data_proc, double **recv_buffer)
 {
-    *strategy = atoi(argv[2]);
-    *id = atoi(argv[3]);
+    int *items_for_process = (memum == 0) ? (int *)calloc(num_procs, sizeof(int)) : NULL;
+    int *displacements = (memum == 0) ? (int *)calloc(num_procs, sizeof(int)) : NULL;
+    (*recv_buffer) = (double *)calloc(num_data_proc, sizeof(double));
+
+    MPI_Gather(&num_data_proc, 1, MPI_INT, items_for_process, 1, MPI_INT, 0, MPI_COMM_WORLD);
+
+    if (memum == 0)
+    {
+        int i = 0;
+        displacements[0] = 0;
+        for (i = 1; i < num_procs; i++)
+        {
+            displacements[i] = displacements[i - 1] + items_for_process[i - 1];
+        }
+    }
+    MPI_Scatterv(send_buffer, items_for_process, displacements, MPI_DOUBLE, *recv_buffer, num_data_proc, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+
+    free(items_for_process);
+    free(displacements);
 }
 
 /**
@@ -141,12 +160,7 @@ void warnings(int strategy, int *id)
     {
         printf("%s", WARNING_NPROC_ONE);
     }
-    if (strategy != STRATEGY_3 && *id != 0)
-    {
-        printf("%s", WARNING_ID_STRATEGY);
-        *id = 0;
-    }
-    if (strategy != STRATEGY_3 && *id == -1)
+    if (strategy != STRATEGY_3 && (*id != 0 || *id == -1))
     {
         printf("%s", WARNING_ID_STRATEGY);
         *id = 0;
@@ -167,58 +181,78 @@ void warnings(int strategy, int *id)
  */
 void check_input(int memum, int *exit_status, int argc, int *strategy, char **argv, int *num_items_input, int *id)
 {
+
     if (memum == 0)
     {
         if (argc < 4)
         {
             printf("%s", ERROR_NUM_INPUT);
-            *exit_status = -1;
-        }
-        *num_items_input = atoi(argv[1]);
-        if (argc == 4 && *num_items_input < MIN_TO_GEN_RANDOM_VALUES)
-        {
-            printf("%s", ERROR_RANDOM_VALUE);
-            *exit_status = -1;
+            *exit_status = EXIT_STATUS_ERROR;
         }
         else
         {
-            read_input(argv, strategy, id);
-        }
-        int num_data = argc - 4;
-        if (IS_STRATEGY_OUT_OF_RANGE(*strategy))
-        {
-            printf("%s", ERROR_STRATEGY);
-            *exit_status = -1;
-        }
-        else if (*strategy != STRATEGY_1 && (is_power_of_two(num_procs) != 1))
-        {
-            printf("%s", ERROR_NUM_PROC_STRATEGY);
-            *exit_status = -1;
-        }
-        else if ((*id < 0 || *id > (num_procs - 1)) && *id != -1)
-        {
-            printf("%s", ERROR_ID_RANGE);
-            *exit_status = -1;
-        }
-        else if (ARE_FEW_ELEMENTS(*num_items_input, num_procs))
-        {
-            printf("%s", ERROR_ITEMS_PROC);
-            *exit_status = -1;
-        }
-        else if (*num_items_input != num_data && (*num_items_input < MIN_TO_GEN_RANDOM_VALUES))
-        {
-            printf("%s", ERROR_NUM_INPUT_WITH_ARGS);
-            *exit_status = -1;
-        }
-        if (*exit_status != -1)
-        {
-            warnings(*strategy, id);
+            *num_items_input = atoi(argv[1]);
+            *strategy = atoi(argv[2]);
+            *id = atoi(argv[3]);
+            *exit_status =
+                check_num_items_input(num_items_input, argc) &&
+                        check_id(id) &&
+                        check_strategy(strategy)
+                    ? 0
+                    : EXIT_STATUS_ERROR;
         }
     }
     MPI_Bcast(exit_status, 1, MPI_INT, 0, MPI_COMM_WORLD);
     MPI_Bcast(id, 1, MPI_INT, 0, MPI_COMM_WORLD);
     MPI_Bcast(strategy, 1, MPI_INT, 0, MPI_COMM_WORLD);
     MPI_Bcast(num_items_input, 1, MPI_INT, 0, MPI_COMM_WORLD);
+}
+
+int check_num_items_input(int *num_items_input, int argc)
+{
+    int items_input = argc - 4;
+
+    if (*num_items_input < 0)
+    {
+        printf("%s", "Indicato un numero negativo di elementi da sommare pari a :%d\n", *num_items_input);
+        return 0;
+    }
+    else if (*num_items_input != items_input && (*num_items_input < MIN_TO_GEN_RANDOM_VALUES))
+    {
+        printf("%s", ERROR_NUM_INPUT_WITH_ARGS);
+        return 0;
+    }
+    else if (ARE_FEW_ELEMENTS(*num_items_input, num_procs))
+    {
+        printf("%s", ERROR_ITEMS_PROC);
+        return 0;
+    }
+    return 1;
+}
+
+int check_id(int *id)
+{
+    if ((*id < -1) || (*id >= num_procs))
+    {
+        printf("%s", ERROR_ID_RANGE);
+        return 0;
+    }
+    return 1;
+}
+
+int check_strategy(int *strategy)
+{
+    if (IS_STRATEGY_OUT_OF_RANGE(*strategy))
+    {
+        printf("%s", ERROR_STRATEGY);
+        return 0;
+    }
+    else if (*strategy != STRATEGY_1 && (is_power_of_two(num_procs) != 1))
+    {
+        printf("%s", "Strategia impostata sul valore di 1 poiché il numero di elementi non è potenza di 2...\n");
+        *strategy = STRATEGY_1;
+    }
+    return 1;
 }
 
 /**
@@ -236,20 +270,21 @@ void init_MPI(int num_elem, char **argv, int *memum)
 
 /**
  * Calcola il numero di elementi che ogni processo si aspetta di ricevere
- * @example : (0,10,NULL,NULL), con num_procs = 2 . Allora num_items_specified = 5 , rest = 0
+ * @example : (0,10,NULL), con num_procs = 2 . Allora num_items_specified = 5 , rest = 0
  * @param memum id processo
  * @param num_items_specified numero totale passato dall'input degli elementi
- * @param num_data_proc numero di elementi per il processo
  * @param rest eventuale resto che se presente e se il memum è minore del resto , il numero di elementi attesi viene maggiorato di uno.
  */
-void calculate_elem_proc(int memum, int num_items_specified, int *num_data_proc, int *rest)
+int calculate_elem_proc(int memum, int num_items_specified, int *rest)
 {
-    *num_data_proc = num_items_specified / num_procs;
+    int num_data_proc = 0;
+    num_data_proc = num_items_specified / num_procs;
     *rest = num_items_specified % num_procs;
     if (memum < *rest)
     {
-        *num_data_proc = *num_data_proc + 1;
+        num_data_proc = num_data_proc + 1;
     }
+    return num_data_proc;
 }
 
 /**
@@ -293,72 +328,31 @@ void exponentials(int **exp2)
  * @param data array in cui memorizzare gli elementi
  * @param num_items_specified numero di elementi
  */
-void parse_input(char **argv, int memum, double **data, int num_items_specified)
+void parse_input(char **argv, int memum, int num_data_proc, int num_total_items, double **recv_buffer)
 {
-    if (memum == 0)
+    if (num_total_items < MIN_TO_GEN_RANDOM_VALUES)
     {
-        (*data) = (double *)calloc(num_items_specified, sizeof(double));
-        if (num_items_specified < MIN_TO_GEN_RANDOM_VALUES)
+        double *send_buffer = NULL;
+        if (memum == 0)
         {
+            send_buffer = (double *)calloc(num_total_items, sizeof(double));
             int i = 0;
-            for (i = 4; i < num_items_specified + 4; i++)
+            for (i = 4; i < num_total_items + 4; i++)
             {
-                (*data)[i - 4] = atof(argv[i]);
+                send_buffer[i - 4] = atof(argv[i]);
             }
         }
-        else
-        {
-            srand(time(NULL));
-            int i = 0;
-            for (i = 0; i < num_items_specified; i++)
-            {
-                double gen = MIN_VALUE_GEN + (double)rand() / RAND_MAX * (MAX_VALUE_GEN - MIN_VALUE_GEN);
-                // printf("generated item %f\n", gen);
-                (*data)[i] = gen;
-            }
-        }
+        distribuite_data(memum, send_buffer, num_data_proc, recv_buffer);
     }
-}
-
-/**
- * Se la funzione è eseguita con memum == 0, distribuisce gli elementi contenuti in data ai restanti processori con un ciclo for.
- * @example : (0,10,0,[1,2,3,4])
- * @param memum id processo
- * @param num_data_proc elementi per processore
- * @param rest se presente , per i processi con memum < rest è passato un elemento in più
- * @param data array di elementi da distribuire
- */
-void distribute_data(int memum, int num_data_proc, int rest, double *data)
-{
-    if (memum == 0)
+    else
     {
-        int index = 0;
-        int tmp = num_data_proc;
-        int memum_proc = 0;
-        for (memum_proc = 1; memum_proc < num_procs; memum_proc++)
+        (*recv_buffer) = (double *)calloc(num_data_proc, sizeof(double));
+        int i = 0;
+        srand(time(NULL));
+        for (i = 0; i < num_data_proc; i++)
         {
-            index += tmp;
-            if (memum_proc == rest)
-            {
-                tmp -= 1;
-            }
-            MPI_Send(&data[index], tmp, MPI_DOUBLE, memum_proc, DISTRIBUTION_TAG(memum_proc), MPI_COMM_WORLD);
+            (*recv_buffer)[i] = MIN_VALUE_GEN + (double)rand() / RAND_MAX * (MAX_VALUE_GEN - MIN_VALUE_GEN);
         }
-    }
-}
-
-/**
- * Se il memum è diverso da zero , allora il processo si mette in attesa sincrona con MPI_Recv attendendo num_data_proc elementi per memorizzarli in data
- * @param memum id processo
- * @param num_data_proc elementi attesi
- * @param data array in cui memorizzare
- */
-void get_data(int memum, int num_data_proc, double **data)
-{
-    if (memum != 0)
-    {
-        (*data) = (double *)calloc(num_data_proc, sizeof(double));
-        MPI_Recv(*data, num_data_proc, MPI_DOUBLE, 0, DISTRIBUTION_TAG(memum), MPI_COMM_WORLD, MPI_STATUS_IGNORE);
     }
 }
 
@@ -519,12 +513,15 @@ void print_result(int memum, int id, int strategy, double sum)
  */
 void execute_seq(char **argv, int num_items)
 {
-    double *data;
-    double result;
-    double start_time = 0;
-    parse_input(argv, 0, &data, num_items);
-    start_performance(&start_time);
-    local_calculation(data, num_items, &result);
-    read_performance(start_time, 0);
-    print_result(0, 0, 1, result);
+    /* TODO
+        double *data;
+        double result;
+        double start_time = 0;
+        parse_input(argv, 0, &data, num_items);
+        start_performance(&start_time);
+        local_calculation(data, num_items, &result);
+        read_performance(start_time, 0);
+        print_result(0, 0, 1, result);
+    */
+
 }
