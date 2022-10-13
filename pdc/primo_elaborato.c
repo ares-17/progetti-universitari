@@ -38,7 +38,7 @@
 #define ERROR_NUM_PROC_STRATEGY "Le strategie 2 e 3 sono applicabili su un numero di processi che e' potenza di 2\n"
 #define ERROR_ID_RANGE "L'id del processo deve esser compreso tra 0 e il (numero di processi - 1),!\n"\
 " oppure indicare -1 per far stampare il calcolo totale da tutti i processi\n\n"
-#define WARNING_NPROC_ONE "Specificando un singolo processore, la libreria MPI non e' utilizzata\n"\
+#define WARNING_NPROC_ONE "Specificando un singolo processo, la libreria MPI non e' utilizzata\n"\
 "e l'intero calcolo e' eseguito sequenzialmente ...\n\n"
 #define ERROR_NUM_INPUT_WITH_ARGS "Il numero totale di elementi da sommare non corrisponde agli elementi effettivamente passati in input \n"
 #define DISTRIBUTION_TAG(i) 501 + i
@@ -113,6 +113,15 @@ int main(int argc, char ** argv) {
   MPI_Finalize();
 }
 
+/**
+ * Distribuisce send_buffer ai processi in MPI_COMM_WORLD utilizzando MPI_Gather e MPI_Scatterv :
+ *  MPI_Gather per assegnare ad un array di memum = 0 il numero di elementi che ad ogni processo spetta
+ *  MPI_Scatterv per distribuire un numero variabile di elementi ai processi , secondo i dati ricavati da MPI_Gather
+ * @param memum
+ * @param send_buffer la totalita' degli elementi dell'operazione
+ * @param num_data_proc numero di elementi che ciascun processo avra' dopo la funzione
+ * @param recv_buffer array in cui memorizzare gli elementi del processo
+*/
 void distribuite_data(int memum, double * send_buffer, int num_data_proc, double ** recv_buffer) {
   int * items_for_process = (memum == 0) ? (int * ) calloc(num_procs, sizeof(int)) : NULL;
   int * displacements = (memum == 0) ? (int * ) calloc(num_procs, sizeof(int)) : NULL;
@@ -167,7 +176,7 @@ void warnings(int * strategy, int * id) {
 /**
  * Verifica che non si ricada in un caso fatale dovuto ad un errore di input. Le variabili exit_status, strategy , num_items_input , id
  * sono passate in input e ad ogni processo sono assegnati dei valori letti ed inviati tramite MPI_Bcast.
- * I valori sono letti dalla funzione read_input() eseguita solo dal primo processo (id == 0)
+ * Il processo con memum=0 effettua i controlli
  * @param memum id processo
  * @param exit_status -1 ise è presente almeno un errore
  * @param argc numero di input
@@ -201,6 +210,11 @@ void check_input(int memum, int * exit_status, int argc, int * strategy, char **
   MPI_Bcast(num_items_input, 1, MPI_INT, 0, MPI_COMM_WORLD);
 }
 
+/**
+ * Esegue controlli di qualita' sul primo input che indica il numero di elementi
+ * @param num_items_input numero di elementi input
+ * @param argc numero di elementi totali in input al programma  
+*/
 int check_num_items_input(int * num_items_input, int argc) {
   int items_input = argc - 4;
 
@@ -217,6 +231,10 @@ int check_num_items_input(int * num_items_input, int argc) {
   return 1;
 }
 
+/**
+ * Esegue controlli sul valore del terzo parametro , l'id del processo
+ * @param id id processo
+*/
 int check_id(int * id) {
   if (( * id < -1) || ( * id >= num_procs)) {
     printf("%s", ERROR_ID_RANGE);
@@ -225,6 +243,10 @@ int check_id(int * id) {
   return 1;
 }
 
+/**
+ * Verifica che la strategia sia coerente con il numero di processi e controllo che il valore ricada nel range
+ * @param strategy strategia
+*/
 int check_strategy(int * strategy) {
   if (IS_STRATEGY_OUT_OF_RANGE( * strategy)) {
     printf("%s", ERROR_STRATEGY);
@@ -295,12 +317,13 @@ void exponentials(int ** exp2) {
 }
 
 /**
- * Effettua il parsing delle stringhe fornite in input per convertirle in double oppure se num_items_specified è presente un numero maggiore di 20 ,
- * sono generati tanti double quanti num_items_specified e memorizzati in data.
+ * Se gli elementi sono letti dall'input , il processo memum=0 ne esegue la conversione in double , poi saranno distribuiti.
+ * Se gli elementi devono essere generati, ogni processo genera autonomamente i suoi elementi.  
  * @param argv array da formattare
  * @param memum id processo
- * @param data array in cui memorizzare gli elementi
- * @param num_items_specified numero di elementi
+ * @param num_data_proc numero di elementi che spettano al processo
+ * @param num_total_items numero di elementi totali
+ * @param recv_buffer array in cui memorizzare gli elementi del processo
  */
 void parse_input(char ** argv, int memum, int num_data_proc, int num_total_items, double ** recv_buffer) {
   if (num_total_items < MIN_TO_GEN_RANDOM_VALUES) {
@@ -320,7 +343,6 @@ void parse_input(char ** argv, int memum, int num_data_proc, int num_total_items
     for (i = 0; i < num_data_proc; i++) {
       double gen = MIN_VALUE_GEN + (double) rand() / RAND_MAX * (MAX_VALUE_GEN - MIN_VALUE_GEN);
       ( * recv_buffer)[i] = gen;
-      //printf("gen : %f\n", gen);
     }
   }
 }
