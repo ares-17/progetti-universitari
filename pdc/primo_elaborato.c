@@ -47,8 +47,7 @@
 #define MIN_VALUE_GEN 1
 #define EXIT_STATUS_ERROR - 1
 
-int
-const MIN_ARG_REQUIRED = 6;
+int const MIN_ARG_REQUIRED = 6;
 int num_procs;
 
 int check_num_items_input(int * num_items_input, int argc);

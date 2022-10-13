@@ -20,7 +20,8 @@
 \usepackage{tikz} % per flowcharts
 \usepackage{titlesec}
 \usepackage{listings} % code snippet
-% \usepackage[dvipsnames]{xcolor} da risolvere per ulteriori colori per snippet , come : NavyBlue
+
+%\usepackage[dvipsnames]{xcolor} da risolvere per ulteriori colori per snippet , come : NavyBlue
 \usepackage{xcolor}
 \usepackage{float} % with \begin{table}[H] for fixed table position
 \usetikzlibrary{shapes, arrows} % per flowcharts
@@ -88,13 +89,12 @@ CORSO DI LAUREA MAGISTRALE IN INFORMATICA}}
     \par
     \noindent
     \begin{minipage}[t]{0.47\textwidth}
-        {\large{\bf Professore:\\
-        Giuliano Laccetti}}
+        {\large{\bf Professore:}\\Giuliano Laccetti}
     \end{minipage}
     \hfill
     \begin{minipage}[t]{0.47\textwidth}
         \raggedleft
-        {\large{\bf Matricola:\\ Alessandro Schiavo}}
+        {\large{\bf Matricola:}\\ Alessandro Schiavo \\N97000423}
     \end{minipage}
     \vspace{20mm}
     \begin{center}
@@ -105,10 +105,161 @@ CORSO DI LAUREA MAGISTRALE IN INFORMATICA}}
 % \maketitle
 \tableofcontents
 
-\chapter{Definzione ed analisi del problema}
-\chapter{Definzione dell'agoritmo}
+\chapter{Definizione ed analisi del problema}
+\subsection{Analisi ambiente}
+Si intende definire un algoritmo in grado di utilizzare appieno i calcolatori \underline{MIMD a memoria distribuita} per eseguire una somma di numeri reali. I calcolatori MIMD ( Multiple Instruction Multiple Data) a memoria distribuita si basano su architetture a memoria condivisa virtuale dove le diverse unità di elaborazione eseguono istruzioni su dati diversi. Tali unità sono associate ad una memoria non condivisa, mentre i dati da condividere sono trasmessi con messaggi sincroni e asincroni. L'architettura MIMD quindi presenta caratteristiche ottimali per un ambiente di calcolo parallelo dove : 
+\begin{itemize}
+    \item le memorie non condivise non presentano problemi di sincronizzazione
+    \item solo i dati da condividere sono trasmessi
+    \item facile modifica del numero di unità di elaborazione
+\end{itemize}
+Al contempo gli svantaggi sono multipli e derivano dal tipo di architettura che demanda molteplici responsabilità allo sviluppatore, come: bilanciare il carico di lavoro tra i vari nodi (coppia memoria-unità) e distribuire i dati necessari per l'elaborazione. 
+L'operazione deve quindi sfruttare l'ambiente di sviluppo individuando la soluzione migliore in base ai nodi presenti e agli input forniti. 
+In ambiente parallelo la complessità di tempo non è in grado di misurare l'efficienza degli algoritmi al variare del numero di processi, dato che non è proporzionale al numero di passi compiuti. Difatti ogni operazione è scomponibile in una componente sequenziale e una parallelizzabile.
+\begin{quote}
+    \centering
+    $T(n) = T_s + \frac{T_c}{p}+ T_o(p)$ , con $T_o > 0$ se $p > 1$
+\end{quote}
+Dove $T_s$ risulta l'insieme delle operazioni esclusivamente sequenziali, $T_c$ l'insieme delle istruzioni eventualmente simultanee sul numero di processi $p$ e $T_o(p)$ il costo della comunicazione che è strettamente correlato al numero di processi. \par 
+Dall'analisi dei tempi si evidenzia che al crescere del numero di processi, a causa della presenza di $T_o(p)$, non necessariamente corrisponde una riduzione del tempo di esecuzione totale. Risulta quindi inevitabile analizzare l'efficienza con strumenti adeguati all'ambiente parallelo.\par 
+La funzione \textit{speed-up} $S(p)$ indica la riduzione del tempo di esecuzione da sequenziale a parallelo dimostrando quanto l'implementazione si presti alla parallelismo; mentre la funzione di \textit{efficienza} $E(p)$ indica la percentuale con la quale l'implementazione impiega le risorse a disposizione.
+
+\subsection{Caratteristiche del problema}\label{caratteritiche_problema}
+In particolare, l'implementazione deve leggere i seguenti input:
+\begin{itemize}
+    \item $N$ : numero di elementi da sommare :
+    \begin{itemize}
+        \item se $N > 20$ l'algoritmo genera un insieme di numeri reali di cardinalità $N$ oppure
+        \item se $N \leq 20$ l'algoritmo legge i numeri in input
+    \end{itemize}
+    \item $P$ strategia di comunicazione tra processi da applicare
+    \item $ID$ identificativo del processo che stampa il risultato :
+    \begin{itemize}
+        \item se $ID = -1$ tutti i processi stampano il risultato
+        \item se $0 \leq ID \leq (P - 1)$ il processo indicato stampa il risultato
+    \end{itemize} 
+\end{itemize}
+\chapter{Definizione dell'agoritmo}
+L'operazione somma di numeri reali presenta una struttra del tipo : lettura degli addendi e un ciclo di somme parziali fino ad ottenere il risultato finale. L'operazione assume dunque le caratteristiche di un albero binario, dove le foglie sono gli addendi e i nodi dello stesso livello sono somme parziali ricavate dal livello precedente; segue che processi diversi possono eseguire rami diversi dell'albero e scambiare le informazioni solo quando necessario. \par 
+La comunicazione tra processi è gestita con la libreria \underline{MPI} ed è impiegata per inizializzare l'ambiente per i processi disponibili e lo scambio di messaggi secondo varie strategie di comunicazione. \par 
+Di seguito i macro passaggi che l'algoritmo compie.
+ \begin{lstlisting}[language=C]
+somma() {
+  exit_status = check_input(...);
+
+  if (exit_status != 0) {
+    exit(exit_status);
+  } else if (num_processi == 1) {
+    sequenziale(...);
+  }
+  numero_elementi_processo = calculate_elem_proc(...);
+  parse_input(...);
+  buffer = local_calculation(...);
+  communication_strategy(...);
+  print_result(...);
+}
+\end{lstlisting}
+La funzione \verb|communication_strategy()| definisce la strategia da utilizzare secondo l'input $P$ e di conseguenza tutti i processi, dopo aver calcolato la propria somma parziale, eseguendo scambi di messaggi secondo tre tipi di implementazione.
+\subsection{Strategia I}
+La prima strategia demanda ad un singolo processo il compito di sommare le somme parziali dei vari processi. Ponendo come processo delle somme parziali $id = 0$, si ottiene che:
+\begin{itemize}
+    \item i processi con $1 \leq id \leq (p-1)$ restano inutilizzati durante l'esecuzione dei livelli $l$ : $ 0 \leq l \leq (h-1)$
+    \item a fine computazione solo il processo $id = 0$ contiene il risultato finale, aggiungendo un ulteriore scambio di messaggi in caso di lettura del risultato da altri processi
+    \item al variare del numero di processi con numero di elementi fisso, l'altezza dell'albero rimane costante poichè la componente $T_c$ parallelizzabile racchiude solamente il livello $l=h$
+\end{itemize}
+
+\subsection{Strategia II}
+Per la seconda strategia i processi sono posti in gruppi di due e generalmente il primo riceve la somma parziale $s_1$ del secondo e comunica ad un altro gruppo di processi la somma parziale $s_0 + s_1$. L'albero che si ottiene è un albero bilanciato quindi con altezza $h$ minima ottenibile ($log_n$).\par 
+Come per la prima strategia, il risultato è memorizzato solo in un processo.
+\subsection{Strategia III} 
+La rappresentazione grafica della terza strategia è identica alla seconda, questo perchè le somme parziali sono calcolate secondo lo stesso principio ma con l'aggiunta che sono eseguite ulteriori comunicazioni tra rami diversi dell'albero, in modo tale che ogni foglia (processo) possegga il risultato totale. 
+
+
 \chapter{Input e Output}
 \chapter{Indicatori di errore}
+Sono presenti diversi indicatori di errore relativi al numero di input fornito, alla qualità dei valori e applicati eventuli controlli di relazione tra di essi. \par 
+Come indicato alla sezione\ref{caratteritiche_problema} gli input sono :
+\begin{enumerate}
+    \item $N$ : numero di elementi da sommare
+    \item $p$ : strategia di comunicazione tra processi da applicare
+    \item $id$ : identificativo del processo che stampa il risultato :
+    \item $s_1,s_2,..,s_N$ valori d'input se $N < 21$ 
+\end{enumerate}
+
+\subsubsection{Errori numero elementi}
+\begin{table}[H]
+    \begin{tabular}{| p{0.5\textwidth} | p{0.5\textwidth} |}
+        \hline
+        \rowcolor{header}
+        \textbf{Verifica} & \textbf{Descrizione} \\
+        \hline
+        \verb|N > 0| & 
+        Verifica numero di elementi maggiore di zero \\
+        \hline
+        Posto \verb|M| il numero di elementi effettivamente passati in input: \verb|N != M AND N < 21| & 
+        Se indicato $N < 21$ è comito dell'utente fornire in input lo stesso numero di numeri reali \\
+        \hline
+        Posto \verb|R| il numero di processori: \verb|(N/2) < R| & 
+        Devono esser presenti almeno due numeri reali per processo\\
+        \hline
+    \end{tabular}
+    \caption{Indicatori di errore per il numero di elementi}
+    \label{tab:Indicatori di errore per il numero di elementi}
+\end{table}
+
+\subsubsection{Errori strategia}
+\begin{table}[H]
+    \begin{tabular}{| p{0.5\textwidth} | p{0.5\textwidth} |}
+        \hline
+        \rowcolor{header}
+        \textbf{Verifica} & \textbf{Descrizione} \\
+        \hline
+        \verb|P < 1 OR P > 3| & 
+        Verifica numero sia specificata la prima , seconda o terza strategia \\
+        \hline
+        Posto \verb|P| il numero di processi e \verb|IS_POW(P)| uan funzione che determina le potenze di due: \verb|S != S1 AND IS_POW(P)| & 
+        Se la strategia è la seconda o la terza, il numero di processi deve esser potenza di due \\
+        \hline
+    \end{tabular}
+    \caption{Indicatori di errore per strategia}
+    \label{tab:Indicatori di errore per strategia}
+\end{table}
+
+\subsubsection{Errori identificativo}
+\begin{table}[H]
+    \begin{tabular}{| p{0.5\textwidth} | p{0.5\textwidth} |}
+        \hline
+        \rowcolor{header}
+        \textbf{Verifica} & \textbf{Descrizione} \\
+        \hline
+        \verb|ID < -1 OR ID > (P-1)| & 
+        Posto \verb|P| il numero di processi, determina che l'id indicato non sia al di fuori del range\\
+        \hline
+    \end{tabular}
+    \caption{Indicatori di errore identificativo}
+    \label{tab:Indicatori di errore identificativo}
+\end{table}
+
+\subsubsection{Errori identificativo}
+I \textit{warnings} sono dei controlli che l'algoritmo esegue e il fallimento non ne implica la terminazione, ma eventualmente degli input sono modificati per proseguire col calcolo.
+\begin{table}[H]
+    \begin{tabular}{| p{0.5\textwidth} | p{0.5\textwidth} |}
+        \hline
+        \rowcolor{header}
+        \textbf{Verifica} & \textbf{Descrizione} \\
+        \hline
+        Posto \verb|P| il numero di processi, \verb|P = 1| & 
+        Avvisa a video che il calcolo sarà eseguito sequenzialmente\\
+        \hline
+        Posto \verb|S3| come terza strategia: \verb|S \neq S3 AND| \verb| (ID \neq 0 OR ID = -1)| & 
+        Se la prima e seconda strategia solo il primo processo contiene il risultato da stampare, per tale motivo se si è in una di queste due strategie e si è indicati un processo diverso dal primo o si è indicati una stampa di tutti i processi, allora \verb|ID = 1| \\
+        \hline
+    \end{tabular}
+    \caption{Indicatori di errore identificativo}
+    \label{tab:Indicatori di errore identificativo}
+\end{table}
+
+
 \chapter{Subroutine}
 \chapter{Analisi dei tempi}
 \chapter{Esempi d'uso}
