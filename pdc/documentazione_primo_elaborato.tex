@@ -105,16 +105,16 @@ CORSO DI LAUREA MAGISTRALE IN INFORMATICA}}
 % \maketitle
 \tableofcontents
 
-\chapter{Definizione ed analisi del problema}
+\chapter{Definizione ed analisi del \\ problema}
 \subsection{Analisi ambiente}
-Si intende definire un algoritmo in grado di utilizzare appieno i calcolatori \underline{MIMD a memoria distribuita} per eseguire una somma di numeri reali. I calcolatori MIMD ( Multiple Instruction Multiple Data) a memoria distribuita si basano su architetture a memoria condivisa virtuale dove le diverse unità di elaborazione eseguono istruzioni su dati diversi. Tali unità sono associate ad una memoria non condivisa, mentre i dati da condividere sono trasmessi con messaggi sincroni e asincroni. L'architettura MIMD quindi presenta caratteristiche ottimali per un ambiente di calcolo parallelo dove : 
+Si intende definire un algoritmo in grado di utilizzare appieno i calcolatori \underline{MIMD a memoria distribuita} per eseguire una somma di numeri reali. I calcolatori MIMD ( Multiple Instruction Multiple Data) a memoria distribuita si basano su architetture a memoria condivisa virtuale dove le diverse unità di elaborazione eseguono istruzioni su dati diversi. Tali unità sono associate ad una memoria privata, mentre i dati da condividere sono trasmessi con messaggi sincroni e asincroni. L'architettura MIMD quindi presenta caratteristiche ottimali per un ambiente di calcolo parallelo dove : 
 \begin{itemize}
     \item le memorie non condivise non presentano problemi di sincronizzazione
     \item solo i dati da condividere sono trasmessi
     \item facile modifica del numero di unità di elaborazione
 \end{itemize}
-Al contempo gli svantaggi sono multipli e derivano dal tipo di architettura che demanda molteplici responsabilità allo sviluppatore, come: bilanciare il carico di lavoro tra i vari nodi (coppia memoria-unità) e distribuire i dati necessari per l'elaborazione. 
-L'operazione deve quindi sfruttare l'ambiente di sviluppo individuando la soluzione migliore in base ai nodi presenti e agli input forniti. 
+Al contempo gli svantaggi sono multipli e derivano dal tipo di architettura, che demanda molteplici responsabilità allo sviluppatore, come: bilanciare il carico di lavoro tra i vari nodi (coppia memoria-unità) e distribuire i dati necessari per l'elaborazione. 
+L'operazione deve quindi sfruttare l'ambiente di sviluppo individuando la soluzione migliore in base ai nodi presenti e agli input forniti. \par 
 In ambiente parallelo la complessità di tempo non è in grado di misurare l'efficienza degli algoritmi al variare del numero di processi, dato che non è proporzionale al numero di passi compiuti. Difatti ogni operazione è scomponibile in una componente sequenziale e una parallelizzabile.
 \begin{quote}
     \centering
@@ -125,7 +125,7 @@ Dall'analisi dei tempi si evidenzia che al crescere del numero di processi, a ca
 La funzione \textit{speed-up} $S(p)$ indica la riduzione del tempo di esecuzione da sequenziale a parallelo dimostrando quanto l'implementazione si presti alla parallelismo; mentre la funzione di \textit{efficienza} $E(p)$ indica la percentuale con la quale l'implementazione impiega le risorse a disposizione.
 
 \subsection{Caratteristiche del problema}\label{caratteritiche_problema}
-In particolare, l'implementazione deve leggere i seguenti input:
+L'implementazione deve leggere i seguenti input:
 \begin{itemize}
     \item $N$ : numero di elementi da sommare :
     \begin{itemize}
@@ -140,7 +140,7 @@ In particolare, l'implementazione deve leggere i seguenti input:
     \end{itemize} 
 \end{itemize}
 \chapter{Definizione dell'agoritmo}
-L'operazione somma di numeri reali presenta una struttra del tipo : lettura degli addendi e un ciclo di somme parziali fino ad ottenere il risultato finale. L'operazione assume dunque le caratteristiche di un albero binario, dove le foglie sono gli addendi e i nodi dello stesso livello sono somme parziali ricavate dal livello precedente; segue che processi diversi possono eseguire rami diversi dell'albero e scambiare le informazioni solo quando necessario. \par 
+L'operazione somma di numeri reali presenta una struttra del tipo : lettura degli addendi e un ciclo di somme parziali per ottenere il risultato finale. L'operazione assume dunque le caratteristiche di un albero binario, dove le foglie sono gli addendi e i nodi dello stesso livello sono somme parziali ricavate dal livello precedente; segue che processi diversi possono eseguire rami diversi dell'albero e scambiare le informazioni solo quando necessario. \par 
 La comunicazione tra processi è gestita con la libreria \underline{MPI} ed è impiegata per inizializzare l'ambiente per i processi disponibili e lo scambio di messaggi secondo varie strategie di comunicazione. \par 
 Di seguito i macro passaggi che l'algoritmo compie.
  \begin{lstlisting}[language=C]
@@ -165,18 +165,17 @@ La prima strategia demanda ad un singolo processo il compito di sommare le somme
 \begin{itemize}
     \item i processi con $1 \leq id \leq (p-1)$ restano inutilizzati durante l'esecuzione dei livelli $l$ : $ 0 \leq l \leq (h-1)$
     \item a fine computazione solo il processo $id = 0$ contiene il risultato finale, aggiungendo un ulteriore scambio di messaggi in caso di lettura del risultato da altri processi
-    \item al variare del numero di processi con numero di elementi fisso, l'altezza dell'albero rimane costante poichè la componente $T_c$ parallelizzabile racchiude solamente il livello $l=h$
+    \item il numero dei processi è proporzionale all'altezza dell'albero poichè un numero maggiore di processi implica ulteriori livelli con somme parziali da aggiungere al risultato finale
 \end{itemize}
 
 \subsection{Strategia II}
-Per la seconda strategia i processi sono posti in gruppi di due e generalmente il primo riceve la somma parziale $s_1$ del secondo e comunica ad un altro gruppo di processi la somma parziale $s_0 + s_1$. L'albero che si ottiene è un albero bilanciato quindi con altezza $h$ minima ottenibile ($log_n$).\par 
+Per la seconda strategia i processi sono posti in gruppi di due e generalmente il primo riceve la somma parziale $s_1$ del secondo e comunica ad un altro gruppo di processi la somma $s_0 + s_1$. L'albero che si ottiene è un albero pieno con le foglie sullo stesso livello, quindi con altezza $h$ minima ottenibile $O(log_n)$. Tale classe di alberi binari ha però una limitazione : il numero delle foglie è pari e quindi il numero di processi.
 Come per la prima strategia, il risultato è memorizzato solo in un processo.
 \subsection{Strategia III}\label{strategia_3}
-La rappresentazione grafica della terza strategia è identica alla seconda, questo perchè le somme parziali sono calcolate secondo lo stesso principio ma con l'aggiunta che sono eseguite ulteriori comunicazioni tra rami diversi dell'albero, in modo tale che ogni foglia (processo) possegga il risultato totale. 
-
+La rappresentazione grafica della terza strategia è identica alla seconda, questo perchè le somme parziali sono calcolate secondo lo stesso principio, ma con l'aggiunta che sono eseguite ulteriori comunicazioni tra rami diversi dell'albero, in modo tale che ogni foglia (processo) possegga il risultato totale. Le limitazioni che valgono per la seconda sono applicate anche alla terza strategia.
 
 \chapter{Input e Output}
-\chapter{Indicatori di errore}
+\chapter{Indicatori di errore}\label{indicatori_errore}
 Sono presenti diversi indicatori di errore relativi al numero di input fornito, alla qualità dei valori e applicati eventuli controlli di relazione tra di essi. \par 
 Come indicato alla sezione\ref{caratteritiche_problema} gli input sono :
 \begin{enumerate}
@@ -283,10 +282,10 @@ void parse_input(char ** argv,
     int num_total_items, 
     double ** recv_buffer);
 \end{lstlisting}
-La lista dei numeri reali è formarsi in due modi : i numeri possono esser forniti dall'utente oppure generati casualmente.\par 
+La lista dei numeri reali inizializzabile in due modi : i numeri possono esser forniti dall'utente oppure esser generati casualmente.\par 
 Nel primo caso il processo con $id=0$ legge un numero $n$ di elementi , $2 \leq n \leq 20$, e li converte da stringhe di input a variabili di tipo \verb|double|. \par 
 La cardinalità ristretta di $n$ garantisce di non creare tempi di attesa della decodifica abbastanza lunghi da non sfruttare in maniera adeguata tutti i processi. Una volta decodificati gli input è chiamata la funzione \verb|distribuite_data| \par
-Nel secondo caso piuttosto ogni processo genera e memorizza autonomamente una quantità variabile di numeri casuali nella propria lista di riferimento. Il numero di elementi per processo è precedentemente determinato. 
+Nel secondo caso invece, ogni processo genera e memorizza autonomamente una quantità variabile di numeri casuali nella propria lista di riferimento. Il numero di elementi per processo è precedentemente determinato. 
 
 \subsection{Distribuzione dei dati}
 \begin{lstlisting}[language=C]
@@ -328,7 +327,7 @@ void first_strategy(int memum, double * local_sum) {
   }
 }
 \end{lstlisting}
-La prima strategia fa sì che ogni processo $p_i$, con $1 \leq id \leq (P-1)$ e con $P$ numero di processi, mandi la propria somma parziale al processo $p_0$.
+La prima strategia fa sì che ogni processo $p_i$, con $1 \leq id \leq (P-1)$ e con $P$ numero di processi, invii la propria somma parziale al processo $p_0$.
 
 \subsubsection{Strategia II}
 \begin{lstlisting}[language=C]
@@ -357,7 +356,7 @@ void second_strategy(int memum, double * partial_sum) {
   }
 }
 \end{lstlisting}
-Per la seconda strategia è prima generate una lista di valori che corrisponde alle potenze di due, riusata da tutti i processi. Dopodichè sono calcolati di volta in volta i processi che ricevono e che mandano la propria somma parziale. Il controllo \verb|memum % exp2[step]) == 0| fa sì che ogni livello, il numero di processi coinvolti nella somma parziale siano dimezzati rispetto al livello precedente.
+Per la seconda strategia è generata una lista di valori che corrispondenti alle potenze di due e riusata da tutti i processi. Dopodichè sono calcolati di volta in volta i processi che ricevono e che inaviano la propria somma parziale. Il controllo \verb|memum % exp2[step]) == 0| fa sì che ogni livello, il numero di processi coinvolti nella somma parziale siano dimezzati rispetto al livello precedente.
 
 \subsubsection{Strategia III}
 \begin{lstlisting}[language=C]
@@ -400,11 +399,50 @@ void third_strategy(int memum, double * partial_sum) {
   }
 }
 \end{lstlisting}
-La terza strategia si basa anch'essa su una lista di potenze di due impiegata dai processi per determinare le comunicazioni da compiere. In tale strategia sono coinvolti tutti i processi in qualsiasi livello, garantendo comunque un numero di livelli minimo per l'esecuzione (vedi \ref{strategia_3}).\par 
-Ogni processo manda e riceve la somma parziale memorizzata a discrimando, in base al proprio $id$, il processo con il quale comunicare.
+La terza strategia si avvale anch'essa di una lista di potenze di due per determinare le comunicazioni da compiere. In tale strategia sono coinvolti tutti i processi in qualsiasi livello, garantendo comunque un numero di livelli minimo per l'esecuzione (vedi \ref{strategia_3}).\par 
+Ogni processo invia e riceve la somma parziale memorizzata e il processo con il quale comunicare  è calcolato in base al proprio identificativo.
 
 \chapter{Analisi dei tempi}
 \chapter{Esempi d'uso}
+I parametri forniti in input determinano il comportamento dell'algoritmo; modificando di conseguenza i tempi di esecuzione. \par 
+\subsubsection{Ogni processo stampa il risultato}
+La variabile che indica il processo che stampa il risultato è $id$ : se assume il valore di $-1$, tutti i processi stampano la propria somma parziale.
+\begin{lstlisting}[language=C]
+mpiexec -np 4 ./primo_elaborato 10000 3 -1
+
+Somma totale : 506429.100210, da id = 0
+Somma totale : 506429.100210, da id = 1
+Somma totale : 506429.100210, da id = 2
+Somma totale : 506429.100210, da id = 3
+\end{lstlisting}
+Al programma sono resi disponibili quattro processi con : mille numeri da generare casualmente, da ripartire nei quattro processi e indicando la terza strategia.
+\begin{lstlisting}[language=C]
+mpiexec -np 3 ./primo_elaborato 10000 3 -1
+
+Strategia impostata sul valore di 1 poiché il numero 
+di processi non è potenza di 2...
+Se è selezionata la prima o la seconda strategia allora,
+solo il primo processo (id = 0) ha il risultato totale!
+Per tale motivo id è posto a 0...
+
+Somma totale : 512058.290683, da id = 0
+\end{lstlisting}
+Come specificato al capitolo \ref{indicatori_errore}, la terza e seconda strategia non sono applicabili su un numero di processi non potenza di due; inoltre per la prima strategia solo il primo processo può stampare il risultato.
+
+\subsubsection{Lettura numeri reali in input}
+\begin{lstlisting}[language=C]
+mpiexec -np 2 ./primo_elaborato 10 3 1 1 2 3 4 5 6 7 8 9 10
+
+Somma totale : 55.000000, da id = 1
+\end{lstlisting}
+La lista di numeri reali è letta in input solo se il numero indicato come primo parametro segue : $2 \leq N \leq 20$. 
+\begin{lstlisting}[language=C]
+mpiexec -np 2 ./primo_elaborato 10 3 1 1 2 3 4 5 6 7 8 9 
+
+Il numero totale di elementi da sommare non corrisponde 
+agli elementi effettivamente passati in input 
+\end{lstlisting}
+Se il numero degli elementi in lista non corrisponde al numero di elementi indicato come primo parametro, l'esecuzione termine con un errore.
 \chapter{Appendice}
 
 \end{document}

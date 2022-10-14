@@ -475,7 +475,7 @@ void communication_strategy(int strategy, int memum, double * local_sum) {
  */
 void print_result(int memum, int id, int strategy, double sum) {
   if ((id == -1 && strategy == STRATEGY_3) || memum == id) {
-    printf("Total sum : %f, da id = %d\n\n", sum, memum);
+    printf("Somma totale : %f, da id = %d\n\n", sum, memum);
   }
 }
 
