@@ -53,10 +53,8 @@ int num_procs;
 int check_num_items_input(int * num_items_input, int argc);
 int check_id(int * id);
 int check_strategy(int * strategy);
-void distribuite_data(int memum, double * data, int num_data_proc, double ** recv_buffer);
+void distribuite_data(int memum, double * send_buffer, int num_data_proc, double ** recv_buffer);
 void parse_input(char ** argv, int memum, int num_data_proc, int num_total_items, double ** recv_buffer);
-
-void read_input(char ** argv, int * strategy, int * id);
 int is_power_of_two(int x);
 void warnings(int * strategy, int * id);
 void check_input(int memum, int * exit_status, int argc, int * strategy, char ** argv, int * num_items_input, int * id);

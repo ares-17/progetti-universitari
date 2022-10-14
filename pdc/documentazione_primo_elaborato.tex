@@ -171,7 +171,7 @@ La prima strategia demanda ad un singolo processo il compito di sommare le somme
 \subsection{Strategia II}
 Per la seconda strategia i processi sono posti in gruppi di due e generalmente il primo riceve la somma parziale $s_1$ del secondo e comunica ad un altro gruppo di processi la somma parziale $s_0 + s_1$. L'albero che si ottiene è un albero bilanciato quindi con altezza $h$ minima ottenibile ($log_n$).\par 
 Come per la prima strategia, il risultato è memorizzato solo in un processo.
-\subsection{Strategia III} 
+\subsection{Strategia III}\label{strategia_3}
 La rappresentazione grafica della terza strategia è identica alla seconda, questo perchè le somme parziali sono calcolate secondo lo stesso principio ma con l'aggiunta che sono eseguite ulteriori comunicazioni tra rami diversi dell'albero, in modo tale che ogni foglia (processo) possegga il risultato totale. 
 
 
@@ -181,8 +181,8 @@ Sono presenti diversi indicatori di errore relativi al numero di input fornito, 
 Come indicato alla sezione\ref{caratteritiche_problema} gli input sono :
 \begin{enumerate}
     \item $N$ : numero di elementi da sommare
-    \item $p$ : strategia di comunicazione tra processi da applicare
-    \item $id$ : identificativo del processo che stampa il risultato :
+    \item $p$ : strategia di comunicazione dei messaggi
+    \item $id$ : identificativo del processo che stampa il risultato
     \item $s_1,s_2,..,s_N$ valori d'input se $N < 21$ 
 \end{enumerate}
 
@@ -197,9 +197,10 @@ Come indicato alla sezione\ref{caratteritiche_problema} gli input sono :
         Verifica numero di elementi maggiore di zero \\
         \hline
         Posto \verb|M| il numero di elementi effettivamente passati in input: \verb|N != M AND N < 21| & 
-        Se indicato $N < 21$ è comito dell'utente fornire in input lo stesso numero di numeri reali \\
+        Se indicato $N < 21$ è compito dell'utente fornire in input lo stesso numero di numeri reali \\
         \hline
-        Posto \verb|R| il numero di processori: \verb|(N/2) < R| & 
+        Posto \verb|R| il numero di processi
+        : \verb|(N/2) < R| & 
         Devono esser presenti almeno due numeri reali per processo\\
         \hline
     \end{tabular}
@@ -215,9 +216,9 @@ Come indicato alla sezione\ref{caratteritiche_problema} gli input sono :
         \textbf{Verifica} & \textbf{Descrizione} \\
         \hline
         \verb|P < 1 OR P > 3| & 
-        Verifica numero sia specificata la prima , seconda o terza strategia \\
+        Verifica che numero indicato corrisponda alla prima , seconda o terza strategia \\
         \hline
-        Posto \verb|P| il numero di processi e \verb|IS_POW(P)| uan funzione che determina le potenze di due: \verb|S != S1 AND IS_POW(P)| & 
+        Posto \verb|P| il numero di processi e \verb|IS_POW(P)| una funzione che determina le potenze di due: \verb|S != S1 AND IS_POW(P)| & 
         Se la strategia è la seconda o la terza, il numero di processi deve esser potenza di due \\
         \hline
     \end{tabular}
@@ -240,8 +241,8 @@ Come indicato alla sezione\ref{caratteritiche_problema} gli input sono :
     \label{tab:Indicatori di errore identificativo}
 \end{table}
 
-\subsubsection{Errori identificativo}
-I \textit{warnings} sono dei controlli che l'algoritmo esegue e il fallimento non ne implica la terminazione, ma eventualmente degli input sono modificati per proseguire col calcolo.
+\subsubsection{Warnings}
+I \textit{warnings} sono delle verifiche aggiuntive eseguite e un loro fallimento non implica la terminazione dell'algoritmo, ma eventualmente sono modificati degli input per proseguire.
 \begin{table}[H]
     \begin{tabular}{| p{0.5\textwidth} | p{0.5\textwidth} |}
         \hline
@@ -251,16 +252,157 @@ I \textit{warnings} sono dei controlli che l'algoritmo esegue e il fallimento no
         Posto \verb|P| il numero di processi, \verb|P = 1| & 
         Avvisa a video che il calcolo sarà eseguito sequenzialmente\\
         \hline
-        Posto \verb|S3| come terza strategia: \verb|S \neq S3 AND| \verb| (ID \neq 0 OR ID = -1)| & 
-        Se la prima e seconda strategia solo il primo processo contiene il risultato da stampare, per tale motivo se si è in una di queste due strategie e si è indicati un processo diverso dal primo o si è indicati una stampa di tutti i processi, allora \verb|ID = 1| \\
+        Posto \verb|S3| come terza strategia: \verb|S \neq S3 AND| \verb| (ID != 0 OR ID = -1)| & 
+        Se selezionata la prima o seconda strategia solo il primo processo contiene il risultato da stampare, quindi se in input è specificato un processo diverso dal primo allora la verifica pone \verb|ID = 1| \\
         \hline
     \end{tabular}
     \caption{Indicatori di errore identificativo}
     \label{tab:Indicatori di errore identificativo}
 \end{table}
 
-
 \chapter{Subroutine}
+Le istruzioni che compongono l'operazione somma di numeri reali sono distribuite in micro operazioni (subroutine) che facilitano l'identificazione delle fasi di calcolo. Le principali subroutine sono elencate sotto forma di istruzioni e correlate da un breve riassunto delle principali caratteristiche ed eventuali implementazioni della libreria.
+
+\subsection{Lettura degli input}
+\begin{lstlisting}[language=C]
+void check_input(int memum, 
+    int * exit_status, 
+    int argc,
+    int * strategy,
+    char ** argv, 
+    int * num_items_input, 
+    int * id);
+\end{lstlisting}
+La funzione demanda esclusivamente al primo processo la lettura degli input, eseguendo semplici \underline{controlli di qualità e quantità}. I controlli determinano una serie di valori che sono condivisi ai processi dello stesso communicator, in particolare \verb|exit_status| che individua casi di errori di terminazione del programma. Per la condivisione dei dati, sono eseguite in serie chiamate alla funzione della libreria \verb|MPI_Bcast|.
+
+\subsection{Decodifica dell'input}
+\begin{lstlisting}[language=C]
+void parse_input(char ** argv, 
+    int memum, 
+    int num_data_proc, 
+    int num_total_items, 
+    double ** recv_buffer);
+\end{lstlisting}
+La lista dei numeri reali è formarsi in due modi : i numeri possono esser forniti dall'utente oppure generati casualmente.\par 
+Nel primo caso il processo con $id=0$ legge un numero $n$ di elementi , $2 \leq n \leq 20$, e li converte da stringhe di input a variabili di tipo \verb|double|. \par 
+La cardinalità ristretta di $n$ garantisce di non creare tempi di attesa della decodifica abbastanza lunghi da non sfruttare in maniera adeguata tutti i processi. Una volta decodificati gli input è chiamata la funzione \verb|distribuite_data| \par
+Nel secondo caso piuttosto ogni processo genera e memorizza autonomamente una quantità variabile di numeri casuali nella propria lista di riferimento. Il numero di elementi per processo è precedentemente determinato. 
+
+\subsection{Distribuzione dei dati}
+\begin{lstlisting}[language=C]
+void distribuite_data(int memum, 
+    double * send_buffer, 
+    int num_data_proc, 
+    double ** recv_buffer);
+\end{lstlisting}
+La subroutine distribuisce \verb|send_buffer| ai processi del communicator utilizzando le funzioni della libreria \verb|MPI_Gather| e \verb|MPI_Scatterv|.\par 
+La prima raccoglie il numero di reali che ogni processo si spetta e memorizza le informazioni in una lista, dove la posizione $i$ corrisponde al processo $p_i$. \par 
+La seconda funzione distribuisce la lista dei numeri reali impiegando due liste: una identifica il numero di reali che ogni processo si aspetta (determinato precedentemente) e la seconda indica la porzione della lista che ogni processo ottiene. Per la distribuzione è impiegata la variante di \verb|MPI_Scatter| per distribuire ad ogni processo un numero diverso di elementi.
+
+\subsection{Lettura delle performance}
+\begin{lstlisting}[language=C]
+void start_performance(double * start_time);
+void read_performance(double start_time_proc, int memum);
+\end{lstlisting}
+Le funzioni determinano il tempo massimo impiegato per svolgere le operazioni di calcolo richieste. \par 
+Con \verb|start_performance| i processi sono sincronizzati sulla stessa istruzione con la funzione della libreria \verb|MPI_Barrier|, per far sì che tutti i processi del communicator siano pronti per eseguire le operazioni che seguono. \par 
+Con \verb|read_performance| è impiegata la libreria con \verb|MPI_Reduce| che identifica il massimo dei tempi ottenuti da ciascun processo. 
+
+\subsection{Strategie}
+\subsubsection{Strategia I}
+\begin{lstlisting}[language=C]
+void first_strategy(int memum, double * local_sum) {
+  if (memum == 0) {
+    double sum_proc = 0;
+    int memum_proc = 0;
+    for (memum_proc = 1; memum_proc < num_procs; memum_proc++) {
+      MPI_Recv( &sum_proc, 1, MPI_DOUBLE, memum_proc,
+        TAG_STRATEGY(memum_proc), MPI_COMM_WORLD,
+        MPI_STATUS_IGNORE);
+        
+      *local_sum += sum_proc;
+    }
+  } else {
+    MPI_Send(local_sum, 1, MPI_DOUBLE, 0,
+        TAG_STRATEGY(memum), MPI_COMM_WORLD);
+  }
+}
+\end{lstlisting}
+La prima strategia fa sì che ogni processo $p_i$, con $1 \leq id \leq (P-1)$ e con $P$ numero di processi, mandi la propria somma parziale al processo $p_0$.
+
+\subsubsection{Strategia II}
+\begin{lstlisting}[language=C]
+void second_strategy(int memum, double * partial_sum) {
+  int * exp2;
+  exponentials( & exp2);
+  int steps = log2(num_procs);
+  double tmp_buff;
+  int step = 0;
+  
+  for (step = 0; step < steps; step++) {
+    if ((memum % exp2[step]) == 0) {
+      if ((memum % exp2[step + 1]) == 0) {
+        MPI_Recv( & tmp_buff, 1, MPI_DOUBLE, 
+            (memum + exp2[step]), TAG_STRATEGY(step),
+             MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        *partial_sum += tmp_buff;
+      } else {
+        MPI_Send(partial_sum, 1, MPI_DOUBLE, 
+            (memum - exp2[step]), TAG_STRATEGY(step), MPI_COMM_WORLD);
+      }
+    }
+  }
+  if (exp2 != NULL) {
+    free(exp2);
+  }
+}
+\end{lstlisting}
+Per la seconda strategia è prima generate una lista di valori che corrisponde alle potenze di due, riusata da tutti i processi. Dopodichè sono calcolati di volta in volta i processi che ricevono e che mandano la propria somma parziale. Il controllo \verb|memum % exp2[step]) == 0| fa sì che ogni livello, il numero di processi coinvolti nella somma parziale siano dimezzati rispetto al livello precedente.
+
+\subsubsection{Strategia III}
+\begin{lstlisting}[language=C]
+void third_strategy(int memum, double * partial_sum) {
+  int steps = 0;
+  int * exp2;
+  exponentials( & exp2);
+  steps = log2(num_procs);
+  int another_rank = 0;
+  int level_multiple = 0;
+  int level = 0;
+  
+  for (level = 0; level < steps; level++) {
+    level_multiple = exp2[level];
+    if ((memum % (exp2[level + 1])) < level_multiple) {
+      another_rank = (memum + level_multiple);
+      MPI_Send(partial_sum, 1, MPI_DOUBLE, another_rank,
+        TAG_STRATEGY(level), MPI_COMM_WORLD);
+      
+      double buff = 0;
+      
+      MPI_Recv( & buff, 1, MPI_DOUBLE, another_rank
+        TAG_STRATEGY(level),MPI_COMM_WORLD   
+                        MPI_STATUS_IGNORE);
+      * partial_sum = * partial_sum + buff;
+    } else {
+      another_rank = (memum - level_multiple);
+      MPI_Send(partial_sum, 1, MPI_DOUBLE, another_rank,
+        TAG_STRATEGY(level), MPI_COMM_WORLD);
+      
+      double buff = 0;
+      
+      MPI_Recv( & buff, 1, MPI_DOUBLE, another_rank,
+       TAG_STRATEGY(level), MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+      *partial_sum = * partial_sum + buff;
+    }
+  }
+  if (exp2 != NULL) {
+    free(exp2);
+  }
+}
+\end{lstlisting}
+La terza strategia si basa anch'essa su una lista di potenze di due impiegata dai processi per determinare le comunicazioni da compiere. In tale strategia sono coinvolti tutti i processi in qualsiasi livello, garantendo comunque un numero di livelli minimo per l'esecuzione (vedi \ref{strategia_3}).\par 
+Ogni processo manda e riceve la somma parziale memorizzata a discrimando, in base al proprio $id$, il processo con il quale comunicare.
+
 \chapter{Analisi dei tempi}
 \chapter{Esempi d'uso}
 \chapter{Appendice}
