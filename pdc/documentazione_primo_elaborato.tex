@@ -328,6 +328,32 @@ void first_strategy(int memum, double * local_sum) {
 }
 \end{lstlisting}
 La prima strategia fa sì che ogni processo $p_i$, con $1 \leq id \leq (P-1)$ e con $P$ numero di processi, invii la propria somma parziale al processo $p_0$.
+\begin{figure}[H]
+\centering
+  \begin{tikzpicture}[auto, node distance=2.5em,>=latex',every node/.style = {shape=rectangle, rounded corners,
+    draw, align=center, top color=header, bottom color=header}]
+    \node[xshift=-9em,yshift=-4cm](P0){$P_0$};
+    \node[xshift=-3em,yshift=-4cm](P1){$P_1$};
+    \node[xshift=+3em,yshift=-4cm](P2){$P_2$};
+    \node[xshift=+9em,yshift=-4cm](P3){$P_3$};
+    
+    \node[xshift=-9em,yshift=-2cm](P0_1){$s_0+s_1$};
+    \node[xshift=-9em,yshift=0cm](P0_2){$s_0+s_1+s_2$};
+    \node[xshift=-9em,yshift=+2cm](P0_3){$s_0+s_1+s_2+s_3$};
+    
+    \draw [->] (P0) -- (P0_1);
+    \draw [->] (P1) -- (P0_1);
+    \draw [->] (P0) -- (P0_1);
+    \draw [->] (P0_1) -- (P0_2);
+    \draw [->] (P2) -- (P0_2);
+    \draw [->] (P0_2) -- (P0_3);
+    \draw [->] (P3) -- (P0_3);
+    
+    \end{tikzpicture}
+    \caption{Esempio di strategia III con quattro processi}
+    \label{fig:grid files}
+\end{figure}
+
 
 \subsubsection{Strategia II}
 \begin{lstlisting}[language=C]
@@ -357,6 +383,24 @@ void second_strategy(int memum, double * partial_sum) {
 }
 \end{lstlisting}
 Per la seconda strategia è generata una lista di valori che corrispondenti alle potenze di due e riusata da tutti i processi. Dopodichè sono calcolati di volta in volta i processi che ricevono e che inaviano la propria somma parziale. Il controllo \verb|memum % exp2[step]) == 0| fa sì che ogni livello, il numero di processi coinvolti nella somma parziale siano dimezzati rispetto al livello precedente.
+\begin{figure}[H]
+\centering
+  \begin{tikzpicture}[sibling distance=10em,
+    every node/.style = {shape=rectangle, rounded corners,
+    draw, align=center, top color=header, bottom color=header}]]
+    
+      \node {$s_0+s_1+s_2+s_3$}
+        child { node {$s_0+s_1$} 
+            child { node[xshift=2em]{$P_0$}}
+            child { node[xshift=-2em]{$P_1$}}
+        }
+        child { node {$s_2+s_3$}
+          child { node[xshift=2em]{$P_2$}}
+            child { node[xshift=-2em]{$P_3$}}};
+    \end{tikzpicture}
+    \caption{Esempio di strategia II con quattro processi}
+    \label{fig:grid files}
+\end{figure}
 
 \subsubsection{Strategia III}
 \begin{lstlisting}[language=C]
@@ -381,7 +425,7 @@ void third_strategy(int memum, double * partial_sum) {
       MPI_Recv( & buff, 1, MPI_DOUBLE, another_rank
         TAG_STRATEGY(level),MPI_COMM_WORLD   
                         MPI_STATUS_IGNORE);
-      * partial_sum = * partial_sum + buff;
+      *partial_sum = *partial_sum + buff;
     } else {
       another_rank = (memum - level_multiple);
       MPI_Send(partial_sum, 1, MPI_DOUBLE, another_rank,
@@ -401,6 +445,53 @@ void third_strategy(int memum, double * partial_sum) {
 \end{lstlisting}
 La terza strategia si avvale anch'essa di una lista di potenze di due per determinare le comunicazioni da compiere. In tale strategia sono coinvolti tutti i processi in qualsiasi livello, garantendo comunque un numero di livelli minimo per l'esecuzione (vedi \ref{strategia_3}).\par 
 Ogni processo invia e riceve la somma parziale memorizzata e il processo con il quale comunicare  è calcolato in base al proprio identificativo.
+\begin{figure}[H]
+\centering
+  \begin{tikzpicture}[auto, node distance=2.5em,>=latex',every node/.style = {shape=rectangle, rounded corners,
+    draw, align=center, top color=header, bottom color=header}]
+    \node[xshift=-9em](P0){$P_0$};
+    \node[xshift=-3em](P1){$P_1$};
+    \node[xshift=+3em](P2){$P_2$};
+    \node[xshift=+9em](P3){$P_3$};
+    
+    \node[xshift=-9em,yshift=-2cm](P0_1){$s_0+s_1$};
+    \node[xshift=-3em,yshift=-2cm](P1_1){$s_0+s_1$};
+    \node[xshift=+3em,yshift=-2cm](P2_1){$s_2+s_3$};
+    \node[xshift=+9em,yshift=-2cm](P3_1){$s_2+s_3$};
+    
+    \node[xshift=-9em,yshift=-4cm](P0_2)
+    {$s_0+s_1+$ \\ $s_2+s_3$};
+    \node[xshift=-3em,yshift=-4cm](P1_2)
+    {$s_0+s_1+$ \\ $s_2+s_3$};
+    \node[xshift=+3em,yshift=-4cm](P2_2)
+    {$s_0+s_1+$ \\ $s_2+s_3$};
+    \node[xshift=+9em,yshift=-4cm](P3_2)
+    {$s_0+s_1+$ \\ $s_2+s_3$};
+    
+    \draw [thick,dashed]  (P0) -- (P0_1);
+    \draw [->] (P0) -- (P1_1);
+    \draw [->] (P1) -- (P0_1);
+    \draw [thick,dashed]  (P1) -- (P1_1);
+    \draw [thick,dashed]  (P2) -- (P2_1);
+    \draw [->] (P2) -- (P3_1);
+    \draw [->] (P3) -- (P2_1);
+    \draw [thick,dashed]  (P3) -- (P3_1);
+    
+    \draw [->] (P0_1) -- (P2_2);
+    \draw [->] (P1_1) -- (P3_2);
+    \draw [->] (P2_1) -- (P0_2);
+    \draw [->] (P3_1) -- (P1_2);
+    
+    \draw [thick,dashed]  (P0_1) -- (P0_2);
+    \draw [thick,dashed]  (P1_1) -- (P1_2);
+    \draw [thick,dashed]  (P2_1) -- (P2_2);
+    \draw [thick,dashed]  (P3_1) -- (P3_2);
+    
+    \end{tikzpicture}
+    \caption{Esempio di strategia III con quattro processi}
+    \label{fig:grid files}
+\end{figure}
+
 
 \chapter{Analisi dei tempi}
 \chapter{Esempi d'uso}
