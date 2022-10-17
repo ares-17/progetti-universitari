@@ -22,6 +22,11 @@
 \usepackage{titlesec}
 \usepackage{listings} % code snippet
 
+% for plots
+\usepackage{pgfplots} 
+\pgfplotsset{compat = newest}
+
+
 %\usepackage[dvipsnames]{xcolor} da risolvere per ulteriori colori per snippet , come : NavyBlue
 \usepackage{xcolor}
 \usepackage{float} % with \begin{table}[H] for fixed table position
@@ -116,11 +121,11 @@ Si intende definire un algoritmo in grado di utilizzare appieno i calcolatori \u
 \end{itemize}
 Al contempo gli svantaggi sono multipli e derivano dal tipo di architettura, che demanda molteplici responsabilità allo sviluppatore, come: bilanciare il carico di lavoro tra i vari nodi (coppia memoria-unità) e distribuire i dati necessari per l'elaborazione. 
 L'operazione deve quindi sfruttare l'ambiente di sviluppo individuando la soluzione migliore in base ai nodi presenti e agli input forniti. \par 
+\label{cenni_complessita}
 In ambiente parallelo la complessità di tempo non è in grado di misurare l'efficienza degli algoritmi al variare del numero di processi, dato che non è proporzionale al numero di passi compiuti. Difatti ogni operazione è scomponibile in una componente sequenziale e una parallelizzabile.
-\begin{quote}
-    \centering
-    $T(n) = T_s + \frac{T_c}{p}+ T_o(p)$ , con $T_o > 0$ se $p > 1$
-\end{quote}
+\begin{equation}
+    T(n) = T_s + \frac{T_c}{p}+ T_o(p) \mbox{, con } T_o > 0 \mbox{ se } p > 1
+\end{equation}
 Dove $T_s$ risulta l'insieme delle operazioni esclusivamente sequenziali, $T_c$ l'insieme delle istruzioni eventualmente simultanee sul numero di processi $p$ e $T_o(p)$ il costo della comunicazione che è strettamente correlato al numero di processi. \par 
 Dall'analisi dei tempi si evidenzia che al crescere del numero di processi, a causa della presenza di $T_o(p)$, non necessariamente corrisponde una riduzione del tempo di esecuzione totale. Risulta quindi inevitabile analizzare l'efficienza con strumenti adeguati all'ambiente parallelo.\par 
 La funzione \textit{speed-up} $S(p)$ indica la riduzione del tempo di esecuzione da sequenziale a parallelo dimostrando quanto l'implementazione si presti alla parallelismo; mentre la funzione di \textit{efficienza} $E(p)$ indica la percentuale con la quale l'implementazione impiega le risorse a disposizione.
@@ -495,6 +500,184 @@ Ogni processo invia e riceve la somma parziale memorizzata e il processo con il 
 
 
 \chapter{Analisi dei tempi}
+Le prestazioni dell'implementazione, in termini di tempo, sono misurate con strumenti adeguati agli ambienti di calcolo parallelo poiché, come accenato in \ref{cenni_complessita}, la sola misurazione della complessità non è in grado di indicare le reali prestazioni fornite in tali ambienti. \par 
+Gli indicatori utilizzati sono lo \textit{speed-up} e la funzione di calcolo dell'efficienza $E(p)$ già menzionati, i quali posti in forma tabellare evidenziano l'andamento delle prestazioni al variare del numero di processi. \par 
+La notazione di seguito utilizzata :
+\begin{itemize}
+    \item con $S_1, S_2, S_3$ sono indicati i valori ottenuti dalle corrispetti strategie
+    \item $S(p)_{s1}, S(p)_{s2}, S(p)_{s3}$ sono i valori della funzione \textit{speed-up} ottenuti sulle strategie in considerazione
+    \item $E(p)_{s1}, E(p)_{s2}, E(p)_{s3}$ corrispondono i valori della funzione efficienza sulle strategie considerate
+\end{itemize}
+\begin{table}[H]\scriptsize
+\centering
+    \begin{tabular}{| p{0.01\textwidth} | p{0.081\textwidth} | p{0.071\textwidth} | p{0.06\textwidth} | p{0.081\textwidth} | p{0.071\textwidth} | p{0.06\textwidth} | p{0.081\textwidth} | p{0.071\textwidth} | p{0.06\textwidth} |}
+        \hline
+        \multicolumn{10}{ |c| }{100 elementi} \\
+        \hline
+        \rowcolor{header}
+        P & $S1$ & $S(p)_{s1}$ & $E(p)_{s1}$ & $S2$ & $S(p)_{s2}$ & $E(p)_{s2}$ & $S3$ & $S(p)_{s3}$ & $E(p)_{s3}$ \\
+        \hline
+        1 & 3,00E-6 & 1 & 100\% & 3,00E-6 & 1 & 100\% & 3,00E-6 & 1 & 100\% \\
+        \hline
+        2 & 4,50E-5 & 6,67E-2 & 3,3\% &6,00E-5 & 5,00E-2 & 2,5\% & 5,30E-5 & 5,66E-2 & 2,8\% \\
+        \hline
+        4 & 4,80E-5 & 6,25E-2 & 1,6\% & 7,40E-5 & 4,05E-2 & 1,0\% & 5,50E-5 & 5,45E-2 & 1,4\% \\
+        \hline
+        8 & 9,30E-5 & 3,23E-2 & 0,4\%& 6,40E-5 & 4,69E-2 & 0,6\%& 6,50E-5 & 4,62E-2 & 0,6\% \\
+        \hline
+    \end{tabular}
+    \caption{prestazioni dell'implementazione su 100 elementi e numero variabile di processi}
+    \label{tab:prestazioni dell'implementazione su 100 elementi e numero variabile di processi}
+\end{table}
+
+\begin{table}[H]\scriptsize
+\centering
+    \begin{tabular}{| p{0.01\textwidth} | p{0.081\textwidth} | p{0.071\textwidth} | p{0.06\textwidth} | p{0.081\textwidth} | p{0.071\textwidth} | p{0.06\textwidth} | p{0.081\textwidth} | p{0.071\textwidth} | p{0.06\textwidth} |}
+        \hline
+        \multicolumn{10}{ |c| }{1000 elementi} \\
+        \hline
+        \rowcolor{header}
+        P & $S1$ & $S(p)_{s1}$ & $E(p)_{s1}$ & $S2$ & $S(p)_{s2}$ & $E(p)_{s2}$ & $S3$ & $S(p)_{s3}$ & $E(p)_{s3}$ \\
+        \hline
+        1 & 8,00E-6 & 1 & 100\% & 8,00E-6 & 1 & 100\% & 7,00E-6 & 1 & 100\% \\
+        \hline
+        2 & 3,80E-5 & 2,11E-1 & 10,5\% & 4,60E-5 & 1,74E-1 & 8,7\% & 4,60E-5 & 1,52E-1 & 7,6\% \\
+        \hline
+        4 & 4,60E-5 & 1,74E-1 & 4,3\% & 6,30E-5 & 1,27E-1 & 3,2\% & 5,40E-5 & 1,30E-1 & 3,2\% \\
+        \hline
+        8 & 9,60E-5 & 8,33E-2 & 1\% & 8,60E-5 & 9,30E-2 & 1,2\% & 6,20E-5 & 1,13E-1 & 1,4\% \\
+        \hline
+    \end{tabular}
+    \caption{prestazioni dell'implementazione su 1000 elementi e numero variabile di processi}
+    \label{tab:prestazioni dell'implementazione su 1000 elementi e numero variabile di processi}
+\end{table}
+
+\begin{table}[H]\scriptsize
+\centering
+    \begin{tabular}{| p{0.01\textwidth} | p{0.081\textwidth} | p{0.071\textwidth} | p{0.06\textwidth} | p{0.081\textwidth} | p{0.071\textwidth} | p{0.06\textwidth} | p{0.081\textwidth} | p{0.071\textwidth} | p{0.06\textwidth} |}
+        \hline
+        \multicolumn{10}{ |c| }{10000 elementi} \\
+        \hline
+        \rowcolor{header}
+        P & $S1$ & $S(p)_{s1}$ & $E(p)_{s1}$ & $S2$ & $S(p)_{s2}$ & $E(p)_{s2}$ & $S3$ & $S(p)_{s3}$ & $E(p)_{s3}$ \\
+        \hline
+        1 & 5,70E-5 & 1 & 100\% & 5,70E-5 & 1 & 100\% & 5,70E-5 & 1 & 100\% \\
+        \hline
+        2 & 6,80E-5 & 8,38E-1 & 41,9\% & 8,20E-5 & 6,95E-1 & 34,8\% & 8,30E-5 & 6,87E-1 & 34,3\% \\
+        \hline
+        4 & 5,80E-5 & 9,83E-1 & 24,6\% & 7E-5 & 8,14E-1 & 20,4\% & 6,70E-5 & 8,51E-1 & 21,3\% \\
+        \hline
+        8 & 1,01E-4 & 5,64E-1 & 7,1\% & 8,90E-5 & 6,40E-1 & 8\% & 6,70E-5 & 8,51E-1 & 10,6\% \\
+        \hline
+    \end{tabular}
+    \caption{prestazioni dell'implementazione su 10000 elementi e numero variabile di processi}
+    \label{tab:prestazioni dell'implementazione su 10000 elementi e numero variabile di processi}
+\end{table}
+
+
+\begin{table}[H]\scriptsize
+\centering
+    \begin{tabular}{| p{0.01\textwidth} | p{0.081\textwidth} | p{0.071\textwidth} | p{0.06\textwidth} | p{0.081\textwidth} | p{0.071\textwidth} | p{0.06\textwidth} | p{0.081\textwidth} | p{0.071\textwidth} | p{0.06\textwidth} |}
+        \hline
+        \multicolumn{10}{ |c| }{100.000 elementi} \\
+        \hline
+        \rowcolor{header}
+        P & $S1$ & $S(p)_{s1}$ & $E(p)_{s1}$ & $S2$ & $S(p)_{s2}$ & $E(p)_{s2}$ & $S3$ & $S(p)_{s3}$ & $E(p)_{s3}$ \\
+        \hline
+        1 & 4,76E-4 & 1 & 100\% & 5,60E-4 & 1 & 100\% & 5,59E-4 & 1 & 100\% \\
+        \hline
+        2 & 2,88E-4 & 1,65 & 82,6\% & 2,98E-4 & 1,88 & 94\% & 2,99E-4 & 1,87 & 93,5\% \\
+        \hline
+        4 & 1,65E-4 & 2,88 & 72,1\% & 1,77E-4 & 3,16 & 79,1\% & 1,78E-4 & 3,14 & 78,5\% \\
+        \hline
+        8 & 1,52E-4 & 3,13 & 39,1\% & 1,35E-4 & 4,15 & 51,9\% & 1,29E-4 & 4,33 & 54,2\% \\
+        \hline
+    \end{tabular}
+    \caption{prestazioni dell'implementazione su 100000 elementi e numero variabile di processi}
+    \label{tab:prestazioni dell'implementazione su 100000 elementi e numero variabile di processi}
+\end{table}
+
+\begin{table}[H]\scriptsize
+\centering
+    \begin{tabular}{| p{0.01\textwidth} | p{0.081\textwidth} | p{0.071\textwidth} | p{0.06\textwidth} | p{0.081\textwidth} | p{0.071\textwidth} | p{0.06\textwidth} | p{0.081\textwidth} | p{0.071\textwidth} | p{0.06\textwidth} |}
+        \hline
+        \multicolumn{10}{ |c| }{1.000.000 elementi} \\
+        \hline
+        \rowcolor{header}
+        P & $S1$ & $S(p)_{s1}$ & $E(p)_{s1}$ & $S2$ & $S(p)_{s2}$ & $E(p)_{s2}$ & $S3$ & $S(p)_{s3}$ & $E(p)_{s3}$ \\
+        \hline
+        1 & 4,99E-3 & 1 & 100\% & 4,99E-3 & 1 & 100\% & 4,97E-3 & 1 & 100\% \\
+        \hline
+        2 & 2,54E-3 & 1,97 & 98,4\% & 2,55E-3 & 1,96 & 97,9\% & 2,55E-3 & 1,95 & 97,5\% \\
+        \hline
+        4 & 1,30E-3 & 3,86 & 96,4\% & 1,31E-3 & 3,82 & 95,4\% & 1,31E-3 & 3,80 & 94,9\% \\
+        \hline
+        8 & 7,13E-4 & 7,00 & 87,6\% & 6,94E-4 & 7,20 & 89,9\% & 6,82E-4 & 7,29 & 91,2\% \\
+        \hline
+    \end{tabular}
+    \caption{prestazioni dell'implementazione su 1000000 elementi e numero variabile di processi}
+    \label{tab:prestazioni dell'implementazione su 1000000 elementi e numero variabile di processi}
+\end{table}
+
+\begin{table}[H]\scriptsize
+\centering
+    \begin{tabular}{| p{0.01\textwidth} | p{0.09\textwidth} | p{0.05\textwidth} | p{0.06\textwidth} | p{0.09\textwidth} | p{0.05\textwidth} | p{0.06\textwidth} | p{0.09\textwidth} | p{0.05\textwidth} | p{0.06\textwidth} |}
+        \hline
+        \multicolumn{10}{ |c| }{10.000.000 elementi} \\
+        \hline
+        \rowcolor{header}
+        P & $S1$ & $S(p)_{s1}$ & $E(p)_{s1}$ & $S2$ & $S(p)_{s2}$ & $E(p)_{s2}$ & $S3$ & $S(p)_{s3}$ & $E(p)_{s3}$ \\
+        \hline
+        1 & 5,00E-2 & 1 & 100\% & 5,00E-2 & 1 & 100\% & 5,00E-2 & 1 & 100\% \\
+        \hline
+        2 & 2,51E-2 & 1,99 & 99,6\% & 2,50E-2 & 1,99 & 99,7\% & 2,50E-2 & 2,00 & 99,9\% \\
+        \hline
+        4 & 1,26E-2 & 3,96 & 99,1\% & 1,27E-2 & 3,93 & 98,3\% & 1,45E-2 & 3,45 & 86,3\% \\
+        \hline
+        8 & 6,39E-3 & 7,82 & 97,7\% & 6,35E-3 & 7,87 & 98,3\% & 6,57E-3 & 7,61 & 95,1\% \\
+        \hline
+    \end{tabular}
+    \caption{prestazioni dell'implementazione su 10.000.000 elementi e numero variabile di processi}
+    \label{tab:prestazioni dell'implementazione su 10.000.000 elementi e numero variabile di processi}
+\end{table}
+
+\subsection{Analisi efficienza su 100.000 elementi}
+
+\begin{figure}[H]
+\centering
+\pgfplotstableread{efficienza 100.000}{\table}
+\begin{tikzpicture}[scale=0.6]
+\begin{axis}[
+    xmin = 2, xmax = 8,
+    ymin = 30, ymax = 100,
+    xtick distance = 2,
+    ytick distance = 10,
+    grid = both,
+    minor tick num = 1,
+    major grid style = {lightgray},
+    minor grid style = {lightgray!25},
+    width = \textwidth,
+    height = 0.75\textwidth,
+    legend cell align = {left},
+    legend pos = north east
+]
+ 
+\addplot[blue, mark = *] table [x = {P}, y = {s1}] {\table};
+\addplot[red, mark = *] table [x ={P}, y = {s2}] {\table};
+\addplot[teal, mark = *] table [x = {P}, y = {s3}] {\table};
+ 
+\legend{
+    Strategia 1, 
+    Strategia 2,
+    Strategia 3
+}
+\end{axis}
+\end{tikzpicture}
+    \caption{Efficienza strategie su 100.000 elementi e processi variabili}
+    \label{tab: Efficienza strategie su 100.000 elementi e processi variabili}
+\end{figure}
+
+
 \chapter{Esempi d'uso}
 I parametri forniti in input determinano il comportamento dell'algoritmo; modificando di conseguenza i tempi di esecuzione. \par 
 \subsubsection{Ogni processo stampa il risultato}
