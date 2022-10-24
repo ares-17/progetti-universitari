@@ -1,0 +1,49 @@
+#!/bin/bash
+
+##################
+#
+#  PBS directives
+#
+###################
+#PBS -q studenti
+#PBS -l nodes=8:ppn=8
+#PBS -N primo_elaborato
+#PBS -o primo_elaborato.out
+#PBS -e primo_elaborato.err
+###################
+
+sort -u $PBS_NODEFILE > hostlist
+cat hostlist
+
+NCPU=`wc -l < hostlist`
+echo ---------------------------------------------
+echo 'This job i allocated on '${NCPU}' cpu(s)'
+echo 'Job is running n node(s) :' 
+
+PBS_O_WORKDIR=$PBS_O_HOME/primo_elaborato
+echo ---------------------------------------------
+echo PBS: qsub is running on $PBS_O_HOST
+echo PBS: originating queue is $PBS_O_QUEUE
+echo PBS: executing queue is $PBS_QUEUE
+echo PBS: working directory is $PBS_O_WORKDIR
+echo PBS: execution node is $PBS_ENVIRONMENT
+echo PBS: job identifier is $PBS_JOBID
+echo PBS: job name is $PBS_JOBNAME
+echo PBS: node file is $PBS_NODEFILE
+echo PBS: current home directory is $PBS_O_HOME
+echo PBS: PATH = $PBS_O_PATH
+echo -----------------------------------------------
+echo "Eseguo: /usr/lib64/openmpi/1.4-gcc/bin/mpicc -o $PBS_O_WORKDIR/primo_elaborato $PBS_O_WORKDIR/primo_elaborato.c"
+/usr/lib64/openmpi/1.4-gcc/bin/mpicc $PBS_O_WORKDIR/primo_elaborato.c -o $PBS_O_WORKDIR/primo_elaborato
+
+for (( num_items=100 ; num_items<= 10000000; num_items = num_items*10 )); 
+do
+    for num_strategy in {1..3}; 
+    do
+        for num_procs in {1..8};
+        do 
+            echo "N : $num_items , S : $num_strategy , P : $num_procs"
+            /usr/lib64/openmpi/1.4-gcc/bin/mpiexec -machinefile hostlist -n $num_procs $PBS_O_WORKDIR/primo_elaborato $num_items $num_strategy 0
+        done
+    done
+done
