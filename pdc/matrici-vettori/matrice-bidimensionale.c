@@ -23,9 +23,10 @@ int main(int argc, char **argv)
     leggi_righe(menum, argc, argv, &row);
     MPI_Bcast(&row, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
-    col = nproc / row;
+    col = (row / nproc) / numero_dimensioni;
     coordinate = (int *)calloc(numero_dimensioni, sizeof(int));
-    num_elementi_per_dimensione = getNumeroElementiPerDimensione(row, col);
+    num_elementi_per_dimensione = getNumeroElementiPerDimensione((row / nproc) / numero_dimensioni, col);
+    printf("numero elementi pe dimensione %d %d\tcol:%d\n",num_elementi_per_dimensione[0], num_elementi_per_dimensione[1],col);
     period = getPeriod();
     reorder = 0;
 
