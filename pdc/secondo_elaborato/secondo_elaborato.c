@@ -10,20 +10,20 @@
                         "1. Numero righe\n"         \
                         "2. Numero di colonne\n"\
                         "3. Numbero di threads\n"
-#define ERROR_NUM_ROWS "Error : il numero di righe non puo' esser inferiore a zero\n"
-#define ERROR_NUM_COLUMNS "Error : il numero di colonne non puo' esser inferiore a zero\n"
-#define ERROR_NUM_THREAD "Errore : non e' possibile assegnare almeno una riga per thread. Riprovare incrementando il numero di righe"
+#define ERROR_NUM_ROWS "Error : il numero di righe non puo' esser inferiore o uguale a zero\n"
+#define ERROR_NUM_COLUMNS "Error : il numero di colonne non puo' esser inferiore o uguale a zero\n"
+#define ERROR_NUM_THREAD "Errore : non e' possibile assegnare almeno una riga per thread. Riprovare incrementando il numero di righe\n"
 #define ERROR_OPEN_FILE "Error : impossibile scrivere su file\n"
+#define ERROR_LESS_THREAD "Error: indicare almeno due thread per svolgere l'operazione\n"
 
 int check_input(int argc, char const *argv[], int *rows, int *columns,int *threads);
-FILE *create_file();
 double *gen_random_array(int length,int threads);
 double **gen_random_matrix(int rows, int columns,int threads);
 double *matxvet(int rows, int columns, double *array, double **matrix,int threads);
 double get_time(struct timeval time);
-void print_matrix(double **matrix, int rows, int columns, FILE *file);
-void print_array(double *array, int length, FILE *file, char *name);
-
+void check_input_condition(int boolean,char *error_code);
+void print_array(double *array, int length,char* name);
+void print_matrix(double **matrix, int rows, int columns);
 
 int main(int argc, char const *argv[])
 {
@@ -33,24 +33,20 @@ int main(int argc, char const *argv[])
     double **matrix;
     double *array;
     double *result;
-    FILE *file;
 
     check_input(argc, argv, &rows, &columns,&threads);
-    file = create_file();
 
     matrix = gen_random_matrix(rows, columns,threads);
-    print_matrix(matrix, rows, columns, file);
-    array = gen_random_array(rows,threads);
-    print_array(array, rows, file, "array");
+    array = gen_random_array(columns,threads);
 
     inizio = get_time(time);
     result = matxvet(rows, columns, array, matrix,threads);
     fine = get_time(time);
 
-    print_array(result, rows, file, "result");
+    print_matrix(matrix,rows,columns);
+    print_array(array,columns,"array");
+    print_array(result,columns,"risultato");
     printf("tempo %f, con %d %d %d\n", (fine - inizio),rows,columns,threads);
-
-    fclose(file);
 
     return 0;
 }
@@ -66,50 +62,35 @@ int main(int argc, char const *argv[])
 */
 int check_input(int argc, char const *argv[], int *rows, int *columns,int *threads)
 {
-    if (argc != 4)
-    {
-        printf("%s", (ERROR_NUM_INPUT));
-        exit(-1);
-    }
+    check_input_condition(argc != 4, ERROR_NUM_INPUT);
 
     *rows = atoi(argv[1]);
-    if (*rows <= 0)
-    {
-        printf("%s", (ERROR_NUM_ROWS));
-        exit(-1);
-    }
+    check_input_condition((*rows <= 0),ERROR_NUM_ROWS);
+
     *columns = atoi(argv[2]);
-    if (*columns <= 0)
-    {
-        printf("%s", (ERROR_NUM_COLUMNS));
-        exit(-1);
-    }
+    check_input_condition((*columns <= 0),ERROR_NUM_COLUMNS);
+
     *threads = atoi(argv[3]);
-    if (*threads > (*rows / 2))
-    {
-        printf("%s", (ERROR_NUM_THREAD));
-        exit(-1);
-    }
+    check_input_condition((*threads > (*rows / 2)),ERROR_NUM_THREAD);
+    check_input_condition(*threads <= 1, ERROR_LESS_THREAD);
+
     omp_set_num_threads(*threads);
 }
 
 /**
- * Crea un file secondo il nome 'elaborato_2', con opzione 'w'
- * @return file creato
+ * @param boolean condizione che se verificata scatena una eccezione
+ * @param error_code errore stampato in caso di eccezione
 */
-FILE *create_file()
-{
-    FILE *file;
-    if ((file = fopen("elaborato_2.log", "a+")) == NULL)
-    {
-        printf(ERROR_OPEN_FILE);
+void check_input_condition(int boolean, char *error_code){
+    if( boolean == 1){
+        printf("%s", error_code);
         exit(1);
     }
-    return file;
 }
 
 /**
  * @param length elementi da generare
+ * @param thread numero di thread
  * @return vettore di length double generati casualmente
 */
 double *gen_random_array(int length,int threads)
@@ -120,8 +101,7 @@ double *gen_random_array(int length,int threads)
     #pragma omp parallel for default(none) shared(length, array) private(i) num_threads(threads)
     for (i = 0; i < length; i++)
     {
-        //array[i] = MIN_VALUE_GEN + (double)rand() / RAND_MAX * (MAX_VALUE_GEN - MIN_VALUE_GEN);
-        array[i] = 1;
+        array[i] = MIN_VALUE_GEN + (double)rand() / RAND_MAX * (MAX_VALUE_GEN - MIN_VALUE_GEN);
     }
     return array;
 }
@@ -129,6 +109,7 @@ double *gen_random_array(int length,int threads)
 /**
  * @param rows righe della matrice
  * @param columns colonne della matrice
+ * @param thread numero di thread
  * @return matrice di (rows x columns) double generati casualmente
 */
 double **gen_random_matrix(int rows, int columns,int threads)
@@ -142,8 +123,7 @@ double **gen_random_matrix(int rows, int columns,int threads)
         matrix[i] = (double *)malloc(columns* sizeof(double));
         for (j = 0; j < columns; j++)
         {
-            //matrix[i][j] = MIN_VALUE_GEN + (double)rand() / RAND_MAX * (MAX_VALUE_GEN - MIN_VALUE_GEN);
-            matrix[i][j] = j + i;
+            matrix[i][j] = MIN_VALUE_GEN + (double)rand() / RAND_MAX * (MAX_VALUE_GEN - MIN_VALUE_GEN);
         }
     }
     return matrix;
@@ -155,6 +135,7 @@ double **gen_random_matrix(int rows, int columns,int threads)
  * @param columns numero di colonne della matrice e di elementi del vettore
  * @param array vettore del prodotto
  * @param matrix matrice del prodotto
+ * @param thread numero di thread
  * @return prodotto matrice-vettore
 */
 double *matxvet(int rows, int columns, double *array, double **matrix,int threads)
@@ -186,42 +167,40 @@ double get_time(struct timeval time)
 }
 
 /**
- * Scrive la matrice ,formattata , sul file passato in input
+ * Scrive la matrice a video
  * @param matrix matrice da cui leggere i valori
  * @param rows numero righe
- * @param columns numero colonne
- * @param file file su cui scrivere, si presuppone già aperto
+ * @param columns nome dell'array
 */
-void print_matrix(double **matrix, int rows, int columns, FILE *file)
+void print_matrix(double **matrix, int rows, int columns)
 {
     int i, j;
-    fputs("\nMATRIX\n", file);
+    printf("\nMATRIX\n");
     for (i = 0; i < rows; i++)
     {
-        fputs("| ", file);
+        printf("| ");
         for (j = 0; j < columns; j++)
         {
-            fprintf(file, "%5.2f | ", matrix[i][j]);
+            printf( "%5.3f | ", matrix[i][j]);
         }
-        fputs("\n", file);
+        printf("\n");
     }
-    fputs("\n", file);
+    printf("\n");
 }
 
 /**
- * Scrive l'array  ,formattato , sul file passato in input
+ * Scrive l'array a video
  * @param array matrice da cui leggere i valori
  * @param length numero righe
- * @param file file su cui scrivere, si presuppone già aperto
  * @param name nome dell'array
 */
-void print_array(double *array, int length, FILE *file, char *name)
+void print_array(double *array, int length,char* name)
 {
     int i;
-    fprintf(file, "\n%s\n|", name);
+    printf( "\n%s\n|", name);
     for (i = 0; i < length; i++)
     {
-        fprintf(file, " %5.2f |", array[i]);
+        printf( " %5.3f |", array[i]);
     }
-    fputs("\n", file);
+    printf("\n");
 }

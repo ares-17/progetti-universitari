@@ -14,6 +14,9 @@ void reorder_num_proc_matrix(int *num_proc_row,int* num_proc_col);
 void print_matrix(double** matrix);
 double* partial_row_sums(int num_row, int num_col, double* local_buffer, double* vector);
 double* make_random_vector();
+void distribuite_data(int nproc , int index_buffer,int step_col, int step_row,double** matrix,double* vector, int current_col, int current_row);
+void create_process_cart(int num_proc_row, int num_proc_col,int* menum_grid, MPI_Comm* comm_grid);
+void create_process_cart_only_cols(MPI_Comm* comm_rows, MPI_Comm comm_grid,int* menum_rows);
 
 int const NUMERO_DIM = 2;
 int const NUM_COLS = 8;
@@ -21,10 +24,11 @@ int const NUM_ROWS = 16;
 
 MPI_Request request;
 
+
 int main(int argc, char **argv)
 {
     int menum, nproc, row, col, menum_grid;
-    int *num_elementi_per_dimensione, reorder, *period, *coordinate, step_col,step_row;
+    int step_col,step_row,*divisors,num_divisors,nproc_is_prime, num_proc_col, num_proc_row, menum_rows;
     double **matrix, *local_buffer,*local_vector, *vector;
 
     MPI_Comm comm_grid;
@@ -33,7 +37,6 @@ int main(int argc, char **argv)
     MPI_Comm_rank(MPI_COMM_WORLD, &menum);
     MPI_Comm_size(MPI_COMM_WORLD, &nproc);
 
-    int *divisors,num_divisors,nproc_is_prime, num_proc_col, num_proc_row;
     if(menum == 0){
         nproc_is_prime = is_prime(nproc,&divisors,&num_divisors);
         calc_two_divisors(divisors,num_divisors,nproc,&num_proc_row,&num_proc_col);
@@ -45,7 +48,9 @@ int main(int argc, char **argv)
     MPI_Bcast(&num_proc_col ,1 ,MPI_INT ,0 ,MPI_COMM_WORLD);
 
     if(nproc_is_prime == 1){
-        if(menum == 0)    printf("il numero processori è un numero primo! Impossibile dividere i processori in una griglia!\n");
+        if(menum == 0){
+            printf("il numero processori è un numero primo! Impossibile dividere i processori in una griglia!\n");
+        }
         MPI_Finalize();
         exit(-1);
     }
@@ -61,12 +66,11 @@ int main(int argc, char **argv)
         step_row = NUM_ROWS / num_proc_row;
         int resto_row = NUM_ROWS % num_proc_row;
 
-        int menum_slave = 1;
         int current_row = 0;
         int current_col = 0;
         int index_buffer = 0;
         int i = 0;
-        local_buffer =  (double*)calloc((step_col * step_row),sizeof(double));
+        local_buffer = (double*)calloc((step_col * step_row),sizeof(double));
         memcpy(local_vector ,vector, sizeof(local_vector) * step_row);
         for (i = current_row; i < (current_row + step_row); i++){
             int j = current_col;
@@ -77,26 +81,7 @@ int main(int argc, char **argv)
         }
         current_col += step_col;
         
-        for(menum_slave = 1; menum_slave < nproc; menum_slave++){
-            index_buffer = 0;
-            double *buffer = (double*)calloc((step_col * step_row),sizeof(double));
-            for (i = current_row; i < (current_row + step_row); i++){
-                int j = current_col;
-                for (j = current_col; j < (current_col + step_col); j++){
-                    buffer[index_buffer] = matrix[i][j];
-                    index_buffer++;
-                } 
-            }
-            MPI_Isend((vector + current_row), (NUM_ROWS / num_proc_row), MPI_DOUBLE, menum_slave,77 + menum_slave , MPI_COMM_WORLD , &request);
-            current_col += step_col;
-            if(current_col >= NUM_COLS){
-                current_col = 0;
-                current_row += step_row;
-            }
-            MPI_Isend(buffer ,(step_col * step_row),MPI_DOUBLE , menum_slave , 77 + menum_slave , MPI_COMM_WORLD , &request);
-            
-            free(buffer);
-        }
+        distribuite_data(nproc, index_buffer, step_col, step_row, matrix, vector, current_col, current_row);
     }else{
         step_col = NUM_COLS / num_proc_col;
         step_row = NUM_ROWS / num_proc_row;
@@ -107,25 +92,8 @@ int main(int argc, char **argv)
     }
     MPI_Barrier(MPI_COMM_WORLD);
 
-    coordinate = (int *)calloc(NUMERO_DIM, sizeof(int));
-    num_elementi_per_dimensione = (int *)calloc(NUMERO_DIM, sizeof(int));
-    
-    num_elementi_per_dimensione[0] = num_proc_row;
-    num_elementi_per_dimensione[1] = num_proc_col;
-    period = getPeriod();
-    reorder = 0;
-
-    // Definisce una struttura logica dei processori , creando un nuovo communicator con regole di comunicazione ristrette
-    MPI_Cart_create(MPI_COMM_WORLD, NUMERO_DIM, num_elementi_per_dimensione, period, reorder, &comm_grid);
-    MPI_Comm_rank(comm_grid, &menum_grid);
-    // ritorna le coordinate della cella del processore con menum_grid
-    MPI_Cart_coords(comm_grid, menum_grid, NUMERO_DIM, coordinate);
-    int dims_cart_sub[] = {0,1}; 
-    MPI_Cart_sub(comm_grid, dims_cart_sub, &comm_rows);
-    int *coordinate_rows = (int *)calloc(NUMERO_DIM, sizeof(int));
-    int menum_rows;
-    MPI_Comm_rank(comm_rows, &menum_rows);
-    MPI_Cart_coords(comm_rows, menum_rows, NUMERO_DIM - 1, coordinate_rows);
+    create_process_cart(num_proc_row,num_proc_col,&menum_grid,&comm_grid);
+    create_process_cart_only_cols(&comm_rows,comm_grid,&menum_rows);
 
     double* partial_sums = partial_row_sums(step_row, step_col, local_buffer,local_vector);
     double* total_sums = (double*)calloc(step_row,sizeof(double));
@@ -137,6 +105,53 @@ int main(int argc, char **argv)
 
     MPI_Finalize();
     return 0;
+}
+
+void create_process_cart(int num_proc_row, int num_proc_col,int* menum_grid, MPI_Comm* comm_grid){
+    int* coordinate = (int *)calloc(NUMERO_DIM, sizeof(int));
+    int* num_elementi_per_dimensione = (int *)calloc(NUMERO_DIM, sizeof(int));
+    num_elementi_per_dimensione[0] = num_proc_row;
+    num_elementi_per_dimensione[1] = num_proc_col;
+    int* period = getPeriod();
+    int reorder = 0;
+
+    MPI_Cart_create(MPI_COMM_WORLD, NUMERO_DIM, num_elementi_per_dimensione, period, reorder, comm_grid);
+    MPI_Comm_rank(*comm_grid, menum_grid);
+    MPI_Cart_coords(*comm_grid, *menum_grid, NUMERO_DIM, coordinate);
+}
+
+void create_process_cart_only_cols(MPI_Comm* comm_rows, MPI_Comm comm_grid,int* menum_rows){
+    int dims_cart_sub[] = {0,1}; 
+    int *coordinate_rows = (int *)calloc(NUMERO_DIM, sizeof(int));
+    MPI_Cart_sub(comm_grid, dims_cart_sub, comm_rows);
+    MPI_Comm_rank(*comm_rows, menum_rows);
+    MPI_Cart_coords(*comm_rows, *menum_rows, NUMERO_DIM - 1, coordinate_rows);
+}
+
+void distribuite_data(int nproc , int index_buffer,int step_col, int step_row,double** matrix,double* vector, int current_col, int current_row){
+    int menum_slave = 1;
+    for(menum_slave = 1; menum_slave < nproc; menum_slave++){
+        index_buffer = 0;
+        double *buffer = (double*)calloc((step_col * step_row),sizeof(double));
+        int i = 0;
+        for (i = current_row; i < (current_row + step_row); i++){
+            int j = current_col;
+            for (j = current_col; j < (current_col + step_col); j++){
+                buffer[index_buffer] = matrix[i][j];
+                index_buffer++;
+            } 
+        }
+        MPI_Isend((vector + current_row), step_row, MPI_DOUBLE, menum_slave,77 + menum_slave , MPI_COMM_WORLD , &request);
+        MPI_Isend(buffer ,(step_col * step_row),MPI_DOUBLE , menum_slave , 77 + menum_slave , MPI_COMM_WORLD , &request);
+        
+        current_col += step_col;
+        if(current_col >= NUM_COLS){
+            current_col = 0;
+            current_row += step_row;
+        }
+
+        free(buffer);
+    }
 }
 
 int is_prime(int n,int** divisors,int* length){
