@@ -19,13 +19,17 @@ int read_input(int argc, char **argv, int *length);
 int init_MPI(int num_elem, char **argv, int *menum);
 double **gen_square_matrix(int length);
 void print_matrix(double **matrix, int length);
-int create_square_cart_procs(int dim_length, LocalData *data, MPI_Comm comm_cart);
+int create_square_cart_procs(int dim_length, LocalData *data, MPI_Comm *comm_cart);
 void create_process_cart(LocalData *data, MPI_Comm* comm_grid);
 int check_is_square(int dim_length, int *result);
 int *get_period();
 double *distribuite_matrix_on_proc_cart(LocalData *data, double **matrix, int dim_matrix);
 void distribuite_data(LocalData *data, double** matrix, int current_col, int current_row, int dim_matrix);
 void print_local_data(LocalData data);
+void MBR(LocalData data,double** first_matrix, int dim_matrix, MPI_Comm comm_grid);
+void share_items_first_matrix(LocalData data, MPI_Comm comm_grid, int dim_matrix);
+void share_items_second_matrix(LocalData data, MPI_Comm comm_grid);
+
 
 int const NUMERO_DIM = 2;
 
@@ -48,7 +52,7 @@ int main(int argc, char **argv)
         exit(-1);
     }
 
-    int result_cart_create = create_square_cart_procs(dim_length, data, comm_cart);
+    int result_cart_create = create_square_cart_procs(dim_length, data, &comm_cart);
 
     if(result_cart_create == 0){
         MPI_Finalize();
@@ -67,7 +71,9 @@ int main(int argc, char **argv)
 
     if(data->menum == 0){
         print_local_data(*data);
+        
     }
+    MBR(*data,first_matrix,dim_length,comm_cart);
 
     MPI_Finalize();
 }
@@ -105,7 +111,7 @@ double **gen_square_matrix(int length){
     return matrix;
 }
 
-int create_square_cart_procs(int dim_length, LocalData *data, MPI_Comm comm_cart){
+int create_square_cart_procs(int dim_length, LocalData *data, MPI_Comm *comm_cart){
     int is_dim_multiple_nprocs, is_nprocs_square;
     if(data->menum == 0){
         is_dim_multiple_nprocs = (dim_length % data->num_procs) == 0;
@@ -128,7 +134,7 @@ int create_square_cart_procs(int dim_length, LocalData *data, MPI_Comm comm_cart
         return 0;
     }
 
-    create_process_cart(data, &comm_cart);
+    create_process_cart(data, comm_cart);
     return 1;
 }
 
@@ -216,18 +222,97 @@ void distribuite_data(LocalData *data, double** matrix, int current_col, int cur
     }
 }
 
-void MBR(LocalData data,double** first_matrix, int dim_matrix){
-    int i = 0, j = 0;
-
-    for(i = 0; i < dim_matrix; i++){
-        j++;
-
+void MBR(LocalData data, double** first_matrix, int dim_matrix, MPI_Comm comm_grid){
+    /*
+    int row = 0, col = 0;
+    int entry;
+    for(entry = 0; entry < dim_matrix; entry++){
+        row = 0;
+        int num_elem ;
+        col = entry;
+        for(num_elem = 0; num_elem < dim_matrix; num_elem++){
+            //printf("[%d,%d]:%.1f\t",row, col,first_matrix[row][col]);
+            share_items_first_matrix(data, comm_grid);
+            share_items_second_matrix(data, comm_grid);
+            row++;
+            col++;
+            if(col == dim_matrix){
+                col = 0;
+            }
+        }
+        printf("\n");
     }
+    */
+
+   if(data.menum == 4){
+        share_items_first_matrix(data, comm_grid,dim_matrix);
+        share_items_second_matrix(data, comm_grid);
+   }
+}
+
+void share_items_first_matrix(LocalData data, MPI_Comm comm_grid, int dim_matrix){
+    MPI_Request request;
+    int col = 0;
+    for(col = 0; col< data.num_procs_dim_cart; col++){
+        if( col != data.coordinate[1]){
+            int menum_dest, coords_dest[] = {data.coordinate[0], col};
+            MPI_Cart_rank(comm_grid, coords_dest,&menum_dest); 
+            MPI_Isend(data.buffer_second_matrix , 
+                data.num_total_items, 
+                MPI_DOUBLE, 
+                menum_dest , 
+                11 + menum_dest , 
+                comm_grid , 
+                &request 
+            );
+            double* buffer = (double*)calloc((data.num_total_items),sizeof(double));
+            MPI_Irecv(&buffer , 
+                data.num_total_items , 
+                MPI_DOUBLE , 
+                menum_dest , 
+                11 + menum_dest , 
+                comm_grid , 
+                &request);
+            printf("mando a %d,%d \t",coords_dest[0],coords_dest[1]);
+        }
+    }
+    printf("\n");
+}
+
+void share_items_second_matrix(LocalData data, MPI_Comm comm_grid){
+    MPI_Request request;
+
+    int dest_row = ((data.coordinate[0] - 1) < 0) ? 
+        (data.num_procs_dim_cart - 1): 
+        (data.coordinate[0] - 1);
+    int menum_dest , coords_dest[2] = {dest_row, data.coordinate[1]};
+    MPI_Cart_rank(comm_grid, coords_dest,&menum_dest); 
+    MPI_Isend(data.buffer_second_matrix , 
+        data.num_total_items, 
+        MPI_DOUBLE, 
+        menum_dest , 
+        11 + menum_dest , 
+        comm_grid , 
+        &request);
+
+    int source_row = ((data.coordinate[0] + 1) == data.num_procs_dim_cart) ? 0 : (data.coordinate[0] + 1);
+    int source, coords_source[] = {source_row, data.coordinate[1]};
+    double* buffer = (double*)calloc((data.num_total_items),sizeof(double));
+    MPI_Cart_rank(comm_grid, coords_source,&source); 
+    MPI_Irecv(&buffer , 
+        data.num_total_items , 
+        MPI_DOUBLE , 
+        source , 
+        11 + source , 
+        comm_grid , 
+        &request);
+
+    printf("\nmando [%d,%d], ricevo da [%d,%d]\n",coords_dest[0], coords_dest[1], coords_source[0], coords_source[1]);
 }
 
 void print_local_data(LocalData data){
     printf("menum: %d\n \
-        menum_cart:%d\n \
+        menum_cart: %d\n \
         coordinate: [%d,%d]\n \
         num_procs: %d\n \
         num_procs_dim_cart: %d\n \
