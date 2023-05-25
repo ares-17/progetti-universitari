@@ -126,4 +126,4 @@ class ReteNeurale:
         # le derivate dei bias sono i delta stessi
         derivate_bias_strato = delta_nod_strato
 
-        return (derivate_pesi_strato, derivate_bias_strato)
+        return derivate_pesi_strato, derivate_bias_strato

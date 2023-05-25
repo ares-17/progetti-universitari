@@ -2,7 +2,7 @@ import cv2
 import time
 import numpy as np
 import pylab as pl
-from keras.datasets import mnist
+from tensorflow.keras.datasets import mnist
 from matplotlib import pyplot
 import configparser
 
@@ -87,7 +87,6 @@ def errore_rete(rete_neurale, generic_set_data, label):
 
 
 def accuratezza(rete_neurale, generic_set_data, label, use_softmax):
-    conteggio_corrette = 0
     label = np.array(label)
 
     if use_softmax == True:
@@ -105,7 +104,7 @@ def accuratezza(rete_neurale, generic_set_data, label, use_softmax):
 
 
 def carica_mnist(dim_dataset, dim_train, dim_test):
-    (train_data, train_label), (test_data, test_label) = mnist.load_data()
+    (train_data, train_label), (test_data, test_label) = mnist.load_data(path='mnist.dataset')
 
     dim_img = 14
     dim_valid = dim_dataset - dim_train
@@ -139,7 +138,6 @@ def carica_mnist(dim_dataset, dim_train, dim_test):
 
     valid_x = tmp
     valid_x = np.array(valid_x, ndmin=3)
-    tmp = []
     valid_y = []
 
     for t in range(dim_valid):
@@ -158,7 +156,6 @@ def carica_mnist(dim_dataset, dim_train, dim_test):
 
     test_x = tmp
     test_x = np.array(test_x, ndmin=3)
-    tmp = []
     test_y = []
 
     for t in range(dim_test):
@@ -172,9 +169,6 @@ def carica_mnist(dim_dataset, dim_train, dim_test):
 
 def discesa_gradiente(rete_neurale, train_data, train_label, valid_data, valid_label, num_epoche=1000,
                       learning_rate=0.001, alfa_momento=0.0):
-    derivate = []
-    derivate_pesi = []
-    derivate_bias = []
     somma_derivate_pesi = []
     somma_derivate_bias = []
 
@@ -190,6 +184,7 @@ def discesa_gradiente(rete_neurale, train_data, train_label, valid_data, valid_l
 
         for matrice in rete_attuale.matrici_pesi_strati:
             somma_derivate_pesi.append(np.zeros(np.shape(matrice)))
+            # concatena un array vuoto di dimensione matrice
 
         for bias in rete_attuale.bias_strati:
             somma_derivate_bias.append(np.zeros(np.shape(bias)))
@@ -227,13 +222,13 @@ def discesa_gradiente(rete_neurale, train_data, train_label, valid_data, valid_l
         punti_errore_train.append(errore_train_rete_attuale)
         punti_errore_valid.append(errore_valid_rete_attuale)
 
-        if (errore_valid_rete_attuale < errore_valid_rete_migliore):
+        if errore_valid_rete_attuale < errore_valid_rete_migliore:
             rete_migliore = rete_attuale.copia()
             punto_min = epoca
             num_epoche_rete_non_migliora = 0
         else:
             num_epoche_rete_non_migliora = num_epoche_rete_non_migliora + 1
-            if (num_epoche_rete_non_migliora > 30):
+            if num_epoche_rete_non_migliora > 30:
                 return rete_migliore, punti_errore_train, punti_errore_valid, punto_min
 
         print(f'\nEpoca: {epoca} (di {num_epoche}), Numero epoche senza miglioramenti: {num_epoche_rete_non_migliora}, \
@@ -276,14 +271,42 @@ def esegui_test(num_test, num_nodi_per_strato, learning_rate, alfa_momento, num_
     print(rete_neurale.to_string())
 
     tempo_inizio_esecuzione = time.asctime(time.localtime(time.time()))
-    rete_addestrata, punti_errore_train, punti_errore_valid, punto_min = discesa_gradiente(rete_neurale, train_data,
-                                                                                           train_label, valid_data,
-                                                                                           valid_label, num_epoche,
-                                                                                           learning_rate, alfa_momento)
+    rete_addestrata, punti_errore_train, \
+        punti_errore_valid, punto_min = discesa_gradiente(rete_neurale, train_data,
+                                                          train_label, valid_data,
+                                                          valid_label, num_epoche,
+                                                          learning_rate, alfa_momento)
+
     analisi_risultati_apprendimento(rete_addestrata, num_test, tempo_inizio_esecuzione, learning_rate, alfa_momento,
                                     test_data, test_label, usa_softmax_in_accuratezza, punti_errore_train,
                                     punti_errore_valid, punto_min)
     return
+
+'''
+    refactor del metodo
+    le variabili : num_var_input, num_epoche, dim_dataset, dim_train, dim_test, usa_softmax_in_accuratezza 
+        sono include nell'oggetto configurations
+'''
+def esegui_test_ref(num_test, num_nodi_per_strato, learning_rate, alfa_momento, fun_errore, fun_attivazione,
+                derivata_fun_attivazione, fun_output, train_data, train_label, valid_data, valid_label,
+                test_data, test_label, configurations):
+
+    rete_neurale = ReteNeurale(configurations['num_var_input'], num_nodi_per_strato, fun_errore, fun_attivazione,
+                               derivata_fun_attivazione, fun_output)
+    print(rete_neurale.to_string())
+
+    tempo_inizio_esecuzione = time.asctime(time.localtime(time.time()))
+    rete_addestrata, punti_errore_train, \
+        punti_errore_valid, punto_min = discesa_gradiente(rete_neurale, train_data,
+                                                          train_label, valid_data,
+                                                          valid_label, configurations['num_epoche'],
+                                                          learning_rate, alfa_momento)
+
+    analisi_risultati_apprendimento(rete_addestrata, num_test, tempo_inizio_esecuzione, learning_rate, alfa_momento,
+                                    test_data, test_label, configurations['usa_softmax_in_accuratezza'],
+                                    punti_errore_train, punti_errore_valid, punto_min)
+    return
+
 
 def read_configurations():
     config = configparser.ConfigParser()
@@ -296,3 +319,17 @@ def read_configurations():
     dim_test = int(config.get('Generics', 'dim_test'))
     usa_softmax_in_accuratezza = config.get('Generics', 'usa_softmax_in_accuratezza')
     return num_var_input, num_epoche, dim_dataset, dim_train, dim_test, usa_softmax_in_accuratezza
+
+
+def configs_as_dictionary():
+    config = configparser.ConfigParser()
+    config.read('properties.ini')
+
+    return {
+        'num_var_input': int(config.get('Generics', 'num_var_input')) * int(config.get('Generics', 'num_var_input')),
+        'num_epoche': int(config.get('Generics', 'num_epoche')),
+        'dim_dataset': int(config.get('Generics', 'dim_dataset')),
+        'dim_train': int(config.get('Generics', 'dim_train')),
+        'dim_test': int(config.get('Generics', 'dim_test')),
+        'usa_softmax_in_accuratezza': config.get('Generics', 'usa_softmax_in_accuratezza')
+    }

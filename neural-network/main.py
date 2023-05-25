@@ -1,17 +1,22 @@
+from Functions import Functions
 from module import *
 
 
 def main():
+
+    # configurations = configs_as_dictionary()
+
     num_var_input, num_epoche,\
         dim_dataset, dim_train, \
         dim_test, usa_softmax_in_accuratezza = read_configurations()
 
-    fun_attivazione = (sigmoide, identity)
-    derivata_fun_attivazione = (derivata_sigmoide, derivata_identity)
-    fun_output = (identity, derivata_identity)
+    # creare un'unica assegnazione
+    fun_attivazione = Functions.activation_functions()
+    derivata_fun_attivazione = Functions.derivate_functions()
+    fun_output = Functions.output_functions()
+    fun_errore = Functions.error_functions()
 
-    fun_errore = (cross_entropy_softmax, derivata_cross_entropy_softmax)
-
+    # creare un unico oggetto
     train_data, train_label, \
         valid_data, valid_label, \
         test_data, test_label = carica_mnist(dim_dataset, dim_train, dim_test)
