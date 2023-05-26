@@ -1,5 +1,7 @@
 import numpy as np
 
+from model.Function import Function
+
 
 class Functions:
     _instance = None

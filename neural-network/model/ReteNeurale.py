@@ -1,19 +1,21 @@
+from model.Functions import Functions
 from module import *
 
+
 class ReteNeurale:
-    def __init__(self, num_var_input, num_nodi_per_strato, fun_errore, fun_attivazione, derivata_fun_attivazione,
-                 fun_output):
+    def __init__(self, num_var_input, num_nodi_per_strato):
         self.num_var_input = num_var_input  # numero di variabili in ingresso alla rete
         self.num_nodi_per_strato = num_nodi_per_strato  # lista contenente il numero di nodi interni per ciascun livello previsto
         self.matrici_pesi_strati = []
         self.bias_strati = []
-        self.fun_errore = fun_errore[0]  # coppia (funzione di errore, derivata funzione di errore)
-        self.derivata_fun_errore = fun_errore[1]
-        self.fun_attivazione = fun_attivazione  # n-upla contenente nella posizione i-esima la funzione di attivazione per lo strato i-esimo
-        self.derivata_fun_attivazione = derivata_fun_attivazione  # n-upla contenente nella posizione i-esima la funzione di attivazione per lo strato i-esimo
-        self.fun_output = fun_output[
-            0]  # coppia (funzione per lo strato di output, derivata funzione dello strato di output)
-        self.derivata_fun_output = np.vectorize(fun_output[1])
+        self.fun_errore = Functions.error_functions()[0]
+        self.derivata_fun_errore = Functions.error_functions()[1]
+        self.fun_attivazione = Functions.activation_functions()
+        print(Functions.activation_functions()[0])
+        # n-upla contenente nella posizione i-esima la funzione di attivazione per lo strato i-esimo
+        self.derivata_fun_attivazione = Functions.activation_functions()  # n-upla contenente nella posizione i-esima la funzione di attivazione per lo strato i-esimo
+        self.fun_output = Functions.activation_functions()[0]
+        self.derivata_fun_output = np.vectorize(Functions.output_functions()[1])
 
         self.init_weigths(num_var_input, num_nodi_per_strato)
         self.init_bias(num_nodi_per_strato)
@@ -39,9 +41,7 @@ class ReteNeurale:
 		Bias: \n{self.bias_strati}\n"
 
     def copia(self):
-        rete_copia = ReteNeurale(self.num_var_input, self.num_nodi_per_strato.copy(), \
-                                 (self.fun_errore, self.derivata_fun_errore), self.fun_attivazione, \
-                                 self.derivata_fun_attivazione, (self.fun_output, self.derivata_fun_output))
+        rete_copia = ReteNeurale(self.num_var_input, self.num_nodi_per_strato.copy())
 
         rete_copia.matrici_pesi_strati = []
         rete_copia.bias_strati = []
@@ -52,19 +52,16 @@ class ReteNeurale:
 
         return rete_copia
 
-    def risposta_rete(self, generic_set_data):
-        return self.forward_propagation(generic_set_data)[1][len(self.num_nodi_per_strato) - 1]
-
-    def risposta_rete_con_softmax(self, generic_set_data):
-        output_rete = self.forward_propagation(generic_set_data)[1][len(self.num_nodi_per_strato) - 1]
-        return softmax(output_rete)
+    def risposta_rete(self, generic_set_data, softmax=False):
+        result = self.forward_propagation(generic_set_data)[1][len(self.num_nodi_per_strato) - 1]
+        return Functions.softmax(result) if softmax else result
 
     def forward_propagation(self, train_data):
-        '''
-		Metodo:	forward_propagation
-		Parametri:
-		train_data: input, un vettore di caratteristiche per ogni elemento del training set, da propagare
-		'''
+        """
+        Metodo:	forward_propagation
+        Parametri:
+        train_data: input, un vettore di caratteristiche per ogni elemento del training set, da propagare
+        """
 
         if (train_data.shape[1] != self.num_var_input):
             print("Errore. La dimensione dell'input non coincide con la dimensione dell'input della rete creata\n")
