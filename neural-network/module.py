@@ -1,18 +1,16 @@
-import cv2
 import time
 import numpy as np
 import pylab as pl
-from keras.datasets import mnist
 from matplotlib import pyplot
 import configparser
 
 from model.Dataset import Dataset
-from model.ReteNeurale import *
-from model.ReteNeurale import ReteNeurale
+from model.NeuralNet import *
+from model.NeuralNet import NeuralNet
 from model.Test import Test
 
 
-def network_error(neural_network: ReteNeurale, inputs, target):
+def network_error(neural_network: NeuralNet, inputs, target):
     output = neural_network.risposta_rete(inputs)
     return neural_network.fun_errore(output, target)
 
@@ -34,135 +32,6 @@ def compare_argmax(first, second, axis=1):
     second_argmax = np.argmax(second, axis=axis)
 
     return np.count_nonzero(np.equal(first_argmax, second_argmax), axis=None)
-
-
-def carica_mnist_ref(dataset_configs: dict) -> Dataset:
-    (train_data, train_label), (test_data, test_label) = mnist.load_data()
-
-    img_size = 14
-    dim_valid = dataset_configs['dim_dataset'] - dataset_configs['dim_train']
-
-    # e necessaria la copia ?
-    # copia i primi dim_train elementi
-    train_x = train_data[:dataset_configs['dim_train']].copy() / 255  # ogni img ha dimensione 28x28
-    tmp = []
-
-    for i in range(dataset_configs['dim_train']):
-        res_img = cv2.resize(train_x[i], (img_size, img_size))  # ogni img ha dimensione 14x14
-        tmp.append(np.array(res_img.flatten(), ndmin=2).transpose())  # ogni img ha dimensione 196x1
-
-    train_x = tmp
-    train_x = np.array(train_x, ndmin=3)
-    tmp = []
-    train_y = []
-
-    for t in range(dataset_configs['dim_train']):
-        tmp = np.zeros((10, 1))  # restituisce un nuovo array con 10 elementi, inizializzato con zeri
-        tmp[train_label[t]] = 1  # codifica one-hot settando a 1 solo la label di interesse
-        train_y.append(tmp)
-    train_y = np.array(train_y, ndmin=3)
-
-    # validation set
-    valid_x = train_data[dataset_configs['dim_train']:dataset_configs['dim_dataset']].copy() / 255
-    tmp = []
-
-    for i in range(dim_valid):
-        res = cv2.resize(valid_x[i], (img_size, img_size))
-        tmp.append(np.array(res.flatten(), ndmin=2).transpose())
-
-    valid_x = tmp
-    valid_x = np.array(valid_x, ndmin=3)
-    valid_y = []
-
-    for t in range(dim_valid):
-        tmp = np.zeros((10, 1))
-        tmp[train_label[dataset_configs['dim_train'] + t]] = 1
-        valid_y.append(tmp)
-    valid_y = np.array(valid_y, ndmin=3)
-
-    # test set
-    test_x = test_data.copy() / 255
-    tmp = []
-
-    for i in range(dataset_configs['dim_test']):
-        res = cv2.resize(test_x[i], (img_size, img_size))
-        tmp.append(np.array(res.flatten(), ndmin=2).transpose())
-
-    test_x = tmp
-    test_x = np.array(test_x, ndmin=3)
-    test_y = []
-
-    for t in range(dataset_configs['dim_test']):
-        tmp = np.zeros((10, 1))
-        tmp[test_label[t]] = 1
-        test_y.append(tmp)
-    test_y = np.array(test_y, ndmin=3)
-
-    return Dataset(train_x, train_y, valid_x, valid_y, test_x, test_y)
-
-
-def carica_mnist(dim_dataset, dim_train, dim_test):
-    (train_data, train_label), (test_data, test_label) = mnist.load_data()
-
-    dim_img = 14
-    dim_valid = dim_dataset - dim_train
-
-    # training set
-    train_x = train_data[:dim_train].copy() / 255  # ogni img ha dimensione 28x28
-    tmp = []
-
-    for i in range(dim_train):
-        res_img = cv2.resize(train_x[i], (dim_img, dim_img))  # ogni img ha dimensione 14x14
-        tmp.append(np.array(res_img.flatten(), ndmin=2).transpose())  # ogni img ha dimensione 196x1
-
-    train_x = tmp
-    train_x = np.array(train_x, ndmin=3)
-    tmp = []
-    train_y = []
-
-    for t in range(dim_train):
-        tmp = np.zeros((10, 1))  # restituisce un nuovo array con 10 elementi, inizializzato con zeri
-        tmp[train_label[t]] = 1  # codifica one-hot settando a 1 solo la label di interesse
-        train_y.append(tmp)
-    train_y = np.array(train_y, ndmin=3)
-
-    # validation set
-    valid_x = train_data[dim_train:dim_dataset].copy() / 255
-    tmp = []
-
-    for i in range(dim_valid):
-        res = cv2.resize(valid_x[i], (dim_img, dim_img))
-        tmp.append(np.array(res.flatten(), ndmin=2).transpose())
-
-    valid_x = tmp
-    valid_x = np.array(valid_x, ndmin=3)
-    valid_y = []
-
-    for t in range(dim_valid):
-        tmp = np.zeros((10, 1))
-        tmp[train_label[dim_train + t]] = 1
-        valid_y.append(tmp)
-    valid_y = np.array(valid_y, ndmin=3)
-
-    # test set
-    test_x = test_data.copy() / 255
-    tmp = []
-
-    for i in range(dim_test):
-        res = cv2.resize(test_x[i], (dim_img, dim_img))
-        tmp.append(np.array(res.flatten(), ndmin=2).transpose())
-
-    test_x = tmp
-    test_x = np.array(test_x, ndmin=3)
-    test_y = []
-
-    for t in range(dim_test):
-        tmp = np.zeros((10, 1))
-        tmp[test_label[t]] = 1
-        test_y.append(tmp)
-    test_y = np.array(test_y, ndmin=3)
-
-    return train_x, train_y, valid_x, valid_y, test_x, test_y
 
 
 def discesa_gradiente(rete_neurale, dataset: Dataset, num_epoche=1000, learning_rate=0.001, alfa_momento=0.0):
@@ -234,9 +103,9 @@ def discesa_gradiente(rete_neurale, dataset: Dataset, num_epoche=1000, learning_
     return rete_migliore, punti_errore_train, punti_errore_valid, punto_min
 
 
-def analisi_risultati_apprendimento(rete_addestrata, test: Test, tempo_inizio_esecuzione, dataset: Dataset,
-                                    usa_softmax_in_accuratezza, punti_errore_train,
-                                    punti_errore_valid, punto_min):
+def print_result(rete_addestrata, test: Test, tempo_inizio_esecuzione, dataset: Dataset,
+                 usa_softmax_in_accuratezza, punti_errore_train,
+                 punti_errore_valid, punto_min):
     print(f'\n****** {test.num_test}° TEST ******')
     print('Tempo inizio esecuzione: ', tempo_inizio_esecuzione)
     print('Tempo fine esecuzione: ', time.asctime(time.localtime(time.time())))
@@ -261,7 +130,7 @@ def analisi_risultati_apprendimento(rete_addestrata, test: Test, tempo_inizio_es
 
 
 def esegui_test(test: Test, test_configs: dict, dataset: Dataset) -> None:
-    neural_network = ReteNeurale(test_configs['num_var_input'], test.num_nodi_per_strato)
+    neural_network = NeuralNet(test_configs['num_var_input'], test.num_nodi_per_strato)
     print(neural_network.to_string())
 
     tempo_inizio_esecuzione = time.asctime(time.localtime(time.time()))
@@ -269,10 +138,9 @@ def esegui_test(test: Test, test_configs: dict, dataset: Dataset) -> None:
         punti_errore_valid, punto_min = discesa_gradiente(neural_network, dataset, test_configs['num_epoche'],
                                                           test.learning_rate, test.alfa_momento)
 
-    analisi_risultati_apprendimento(rete_addestrata, test, tempo_inizio_esecuzione, dataset,
-                                    test_configs['usa_softmax_in_accuratezza'], punti_errore_train,
-                                    punti_errore_valid, punto_min)
-    return
+    print_result(rete_addestrata, test, tempo_inizio_esecuzione, dataset,
+                 test_configs['usa_softmax_in_accuratezza'], punti_errore_train,
+                 punti_errore_valid, punto_min)
 
 
 def configs_as_dictionary():
@@ -283,6 +151,7 @@ def configs_as_dictionary():
         'dim_dataset': int(config.get('dataset', 'dim_dataset')),
         'dim_train': int(config.get('dataset', 'dim_train')),
         'dim_test': int(config.get('dataset', 'dim_test')),
+        'dim_valid': int(config.get('dataset', 'dim_dataset')) - int(config.get('dataset', 'dim_train'))
     }
 
     num_var_input = int(config.get('test', 'num_var_input')) * int(config.get('test', 'num_var_input'))

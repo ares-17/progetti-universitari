@@ -2,7 +2,7 @@ from model.Functions import Functions
 from module import *
 
 
-class ReteNeurale:
+class NeuralNet:
     def __init__(self, num_var_input, num_nodi_per_strato):
         self.num_var_input = num_var_input  # numero di variabili in ingresso alla rete
         self.num_nodi_per_strato = num_nodi_per_strato  # lista contenente il numero di nodi interni per ciascun livello previsto
@@ -11,8 +11,6 @@ class ReteNeurale:
         self.fun_errore = Functions.error_functions()[0]
         self.derivata_fun_errore = Functions.error_functions()[1]
         self.fun_attivazione = Functions.activation_functions()
-        print(Functions.activation_functions()[0])
-        # n-upla contenente nella posizione i-esima la funzione di attivazione per lo strato i-esimo
         self.derivata_fun_attivazione = Functions.activation_functions()  # n-upla contenente nella posizione i-esima la funzione di attivazione per lo strato i-esimo
         self.fun_output = Functions.activation_functions()[0]
         self.derivata_fun_output = np.vectorize(Functions.output_functions()[1])
@@ -41,7 +39,7 @@ class ReteNeurale:
 		Bias: \n{self.bias_strati}\n"
 
     def copia(self):
-        rete_copia = ReteNeurale(self.num_var_input, self.num_nodi_per_strato.copy())
+        rete_copia = NeuralNet(self.num_var_input, self.num_nodi_per_strato.copy())
 
         rete_copia.matrici_pesi_strati = []
         rete_copia.bias_strati = []
@@ -57,13 +55,7 @@ class ReteNeurale:
         return Functions.softmax(result) if softmax else result
 
     def forward_propagation(self, train_data):
-        """
-        Metodo:	forward_propagation
-        Parametri:
-        train_data: input, un vettore di caratteristiche per ogni elemento del training set, da propagare
-        """
-
-        if (train_data.shape[1] != self.num_var_input):
+        if train_data.shape[1] != self.num_var_input:
             print("Errore. La dimensione dell'input non coincide con la dimensione dell'input della rete creata\n")
             return None
 
