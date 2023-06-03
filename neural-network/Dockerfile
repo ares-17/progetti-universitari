@@ -5,4 +5,4 @@ RUN pip install opencv-python-headless
 RUN pip install matplotlib keras tensorflow
 
 WORKDIR /app
-CMD [ "python3", "./main.py" ]
+CMD [ "python3", "./main_1.py" ]
