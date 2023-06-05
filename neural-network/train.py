@@ -3,6 +3,7 @@ import cv2
 from cache_functions import *
 from matplotlib import pyplot as plt
 from Layer import *
+import os
 
 def data(shuffle=False, with_cache=False):
   (train_data, train_label), (test_data, test_label) = get_mnist(with_cache)
@@ -65,33 +66,32 @@ def update_params(alpha, layers):
     for layer in layers:
         layer.update_params(alpha)
 
-def get_predictions(A2):
-    return np.argmax(A2, 0)
-
-def get_accuracy(predictions, Y):
-    return np.sum(predictions == Y) / Y.size
-
-def gradient_descent(X, Y, alpha, iterations):
-    layers = [Layer((10, 784), ReLU, ReLU_deriv), \
-        Layer((10, 10), softmax, ReLU_deriv)]
+def gradient_descent(X, Y, alpha, iterations, momentum = 1):
+    layers = [Layer((10, 784), ReLU, ReLU_deriv, momentum), \
+        Layer((10, 10), softmax, ReLU_deriv, momentum)]
     accuracy = np.empty(iterations)
+    
     for i in range(iterations):
         forward_prop(X, layers)
         backward_prop(X, Y, layers)
         update_params(alpha, layers)
-        if i % 10 == 0:
-            print("Iteration: ", i)
-        predictions = get_predictions(layers[-1].A)
-        accuracy[i] = get_accuracy(predictions, Y)
+        accuracy[i] = current_accuracy(i, layers, Y)
     return accuracy
 
-def show(accuracy):
-    plt.plot(accuracy, label="Training set")
+def current_accuracy(iteration, layers, Y):
+    #if iteration % 10 == 0:
+        #print("Iteration: ", iteration)
+    predictions = np.argmax(layers[-1].A, 0)
+    return get_accuracy(predictions, Y)
+
+def get_accuracy(predictions, Y):
+    return np.sum(predictions == Y) / Y.size
+
+def compare_results(accuracies, name):
+    for accuracy in accuracies:
+        plt.plot(accuracy[1], label=f"Accuracy with {accuracy[0]} momentum")
     plt.xlabel("Epochs")
     plt.ylabel("Accuracy")
     plt.legend()
-    plt.show()
-
-accuracy = gradient_descent(train_data, train_label, 0.10, 300)
-show(accuracy)
-print(accuracy[-1])
+    plt.savefig(os.path.join(os.getcwd(), "results", name + ".png"))
+    plt.close()

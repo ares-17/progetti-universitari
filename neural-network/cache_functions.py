@@ -22,7 +22,7 @@ def get_mnist(with_cache=False):
             save_mnist(train_data, train_label, test_data, test_label)
     else:
         (train_data, train_label), (test_data, test_label) = mnist.load_data()
-        save_mnist(train_data, train_label, test_data, test_label)
+        #save_mnist(train_data, train_label, test_data, test_label)
     return (train_data, train_label), (test_data, test_label)
 
 def save_mnist(train_data, train_label, test_data, test_label):
