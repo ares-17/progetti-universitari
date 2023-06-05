@@ -26,8 +26,6 @@ def prepare_data(data):
   data = data / 255 
   return data, m, n
 
-(train_data, train_label), (test_data, test_label), m, n = data(shuffle=True)
-
 def ReLU(Z):
     return np.maximum(Z, 0)
 
@@ -50,7 +48,7 @@ def one_hot(Y):
     one_hot_Y = one_hot_Y.T
     return one_hot_Y
 
-def backward_prop(X, Y, layers):
+def backward_prop(X, Y, layers, m):
     input_layers = [X]
     for index in range(len(layers) - 1):
         input_layers.append(layers[index].A)
@@ -66,21 +64,16 @@ def update_params(alpha, layers):
     for layer in layers:
         layer.update_params(alpha)
 
-def gradient_descent(X, Y, alpha, iterations, momentum = 1):
-    layers = [Layer((10, 784), ReLU, ReLU_deriv, momentum), \
-        Layer((10, 10), softmax, ReLU_deriv, momentum)]
+def gradient_descent(X, Y, layers, alpha, iterations, m):
     accuracy = np.empty(iterations)
-    
     for i in range(iterations):
         forward_prop(X, layers)
-        backward_prop(X, Y, layers)
+        backward_prop(X, Y, layers, m)
         update_params(alpha, layers)
         accuracy[i] = current_accuracy(i, layers, Y)
     return accuracy
 
 def current_accuracy(iteration, layers, Y):
-    #if iteration % 10 == 0:
-        #print("Iteration: ", iteration)
     predictions = np.argmax(layers[-1].A, 0)
     return get_accuracy(predictions, Y)
 
@@ -93,5 +86,8 @@ def compare_results(accuracies, name):
     plt.xlabel("Epochs")
     plt.ylabel("Accuracy")
     plt.legend()
-    plt.savefig(os.path.join(os.getcwd(), "results", name + ".png"))
+    plt.savefig(get_result_path(name))
     plt.close()
+
+def get_result_path(name):
+    return os.path.join(os.getcwd(), "results", name + ".png")
