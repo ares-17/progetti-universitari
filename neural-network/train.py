@@ -19,15 +19,15 @@ def data(shuffle=False, with_cache=False):
         permutation = np.random.permutation(test_data.shape[0])
         test_data = test_data[permutation]
         test_label = test_label[permutation]
-    train_data, m = prepare_data(train_data)
-    test_data, _ = prepare_data(test_data)
-    return (train_data, train_label), (test_data, test_label), m
+    train_data = prepare_data(train_data)
+    test_data = prepare_data(test_data)
+    return (train_data, train_label), (test_data, test_label)
 
 def prepare_data(data):
     """
     Accepts arrays of 3 dimensions, with the last two identical.
     Returns the same array by performing the operations:
-    1. transpose
+    1. transponse
     2. resizing the dimensions to 2
     3. normalization with respect to the value 255
     """
@@ -35,7 +35,7 @@ def prepare_data(data):
     data = data.reshape(shape)
     data = data.T
     data = data / 255 
-    return data, data.shape[0]
+    return data
 
 def ReLU(Z):
     return np.maximum(Z, 0)
@@ -62,7 +62,7 @@ def one_hot(Y):
     one_hot_Y = one_hot_Y.T
     return one_hot_Y
 
-def backward_prop(X, Y, layers, rows_dataset):
+def backward_prop(X, Y, layers):
     """
     For each layer store in array its output.
     Next, exeute back propagation with previous array and calculate derivative only 
@@ -75,7 +75,7 @@ def backward_prop(X, Y, layers, rows_dataset):
     dZ = layers[-1].A - one_hot(Y)
     for index in range(len(layers) - 1, -1, -1):
         current = layers[index]
-        current.backward_prop(dZ, input_layers[index], rows_dataset)
+        current.backward_prop(dZ, input_layers[index], X.shape[1])
         if index - 1 > - 1:
             dZ = current.W.T.dot(dZ) * current.derivative(layers[index - 1].Z)
 
@@ -83,14 +83,14 @@ def update_params(alpha, layers):
     for layer in layers:
         layer.update_params(alpha)
 
-def gradient_descent(X, Y, layers, alpha, iterations, rows_dataset):
+def gradient_descent(X, Y, layers, alpha, iterations):
     """
     For each layer execute forward and back propagation, update params e store accuracy
     """
     accuracy = np.empty(iterations)
     for i in range(iterations):
         forward_prop(X, layers)
-        backward_prop(X, Y, layers, rows_dataset)
+        backward_prop(X, Y, layers)
         update_params(alpha, layers)
         accuracy[i] = current_accuracy(i, layers, Y)
     return accuracy

@@ -5,14 +5,14 @@ import pandas as pd
 def main():
     neurons, layers, momentums, epochs, learning_rate = read_properties()
 
-    (train_data, train_label), (test_data, test_label), rows_dataset = data(shuffle=True)
+    (train_data, train_label), (test_data, test_label) = data(shuffle=True)
 
     layers = None
     accuracies = []
     for momentum in momentums:
-        layers = [Layer((neurons, 784), ReLU, ReLU_deriv, momentum), Layer((neurons, 10), softmax, ReLU_deriv, momentum)]
+        layers = [Layer((neurons, train_data.shape[0]), ReLU, ReLU_deriv, momentum), Layer((neurons, 10), softmax, ReLU_deriv, momentum)]
         print(f"starting momentum {momentum}")
-        accuracy = gradient_descent(train_data, train_label,layers, learning_rate, epochs, rows_dataset)
+        accuracy = gradient_descent(train_data, train_label,layers, learning_rate, epochs)
         accuracies.append((momentum, accuracy))
         test_accuracy = make_predictions(test_data, layers)
         print(f"end momentum {momentum} with accuracy on train: {accuracy.max()}, on test: {get_accuracy(test_accuracy, test_label)}")
