@@ -8,4 +8,6 @@ To run the project on your operating system make sure you already have python 3 
 ```
 ## Docker
 If you have a docker environment run the build phase with the command ```docker build -t nndl .``` In the project folder once.<br>
-To test the changes or to run the neural network run ```docker container run --rm -v .:/app nndl ```
+To test the changes or to run the neural network run:
+-  ```docker container run --rm -v .:/app nndl ``` for visualize matplotlib's graphics
+-   ```docker container run --rm -v .:/app nndl ``` for visualize only string result
