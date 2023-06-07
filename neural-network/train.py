@@ -12,16 +12,22 @@ def data(shuffle=False, with_cache=False):
     """
     (train_data, train_label), (test_data, test_label) = get_mnist(with_cache)
     if shuffle:
-        permutation = np.random.permutation(train_data.shape[0])
-        train_data = train_data[permutation]
-        train_label = train_label[permutation]
-        
-        permutation = np.random.permutation(test_data.shape[0])
-        test_data = test_data[permutation]
-        test_label = test_label[permutation]
+        train_data, train_label = permutation(train_data, train_label)
+        test_data, test_label = permutation(test_data, test_label)
+
     train_data = prepare_data(train_data)
     test_data = prepare_data(test_data)
-    return (train_data, train_label), (test_data, test_label)
+
+    train_data, train_label, valid_data, valid_label =  \
+        train_validation_split(train_data, train_label)
+
+    return (train_data, train_label), (test_data, test_label), (valid_data, valid_label)
+
+def permutation(dataset, label):
+    permutation = np.random.permutation(dataset.shape[0])
+    dataset = dataset[permutation]
+    label = label[permutation]
+    return dataset, label
 
 def prepare_data(data):
     """
@@ -37,6 +43,15 @@ def prepare_data(data):
     data = data / 255 
     return data
 
+def train_validation_split(X, Y, validation_ratio=0.2):
+    valid_size = int(X.shape[1] * validation_ratio)
+    print(f"valid_size : {X.shape[1]}, {valid_size}")
+    train_data = X[:,:-valid_size]
+    train_label = Y[:-valid_size]
+    valid_data = X[:,-valid_size:]
+    valid_label = Y[-valid_size:]
+    return train_data, train_label, valid_data, valid_label
+
 def ReLU(Z):
     return np.maximum(Z, 0)
 
@@ -44,6 +59,11 @@ def softmax(Z):
     A = np.exp(Z) / sum(np.exp(Z))
     return A
     
+def cross_entropy(Y, A):
+    m = Y.shape[1]
+    loss = -np.sum(Y * np.log(A + 1e-8)) / m
+    return loss
+
 def forward_prop(X, layers):
     """
     For each level, forward propagation is performed and the output for the next level is stored.
@@ -62,7 +82,7 @@ def one_hot(Y):
     one_hot_Y = one_hot_Y.T
     return one_hot_Y
 
-def backward_prop(X, Y, layers):
+def backward_prop(X, one_hot_Y, layers):
     """
     For each layer store in array its output.
     Next, exeute back propagation with previous array and calculate derivative only 
@@ -72,7 +92,7 @@ def backward_prop(X, Y, layers):
     for index in range(len(layers) - 1):
         input_layers.append(layers[index].A)
 
-    dZ = layers[-1].A - one_hot(Y)
+    dZ = layers[-1].A - one_hot_Y
     for index in range(len(layers) - 1, -1, -1):
         current = layers[index]
         current.backward_prop(dZ, input_layers[index], X.shape[1])
@@ -88,12 +108,15 @@ def gradient_descent(X, Y, layers, alpha, iterations):
     For each layer execute forward and back propagation, update params e store accuracy
     """
     accuracy = np.empty(iterations)
+    error = np.empty(iterations)
     for i in range(iterations):
         forward_prop(X, layers)
-        backward_prop(X, Y, layers)
+        one_hot_Y = one_hot(Y)
+        backward_prop(X, one_hot_Y, layers)
         update_params(alpha, layers)
         accuracy[i] = current_accuracy(i, layers, Y)
-    return accuracy
+        error[i] = cross_entropy(one_hot_Y, layers[-1].A)
+    return accuracy, error
 
 def current_accuracy(iteration, layers, Y):
     predictions = np.argmax(layers[-1].A, 0)
