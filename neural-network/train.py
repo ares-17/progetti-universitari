@@ -45,7 +45,6 @@ def prepare_data(data):
 
 def train_validation_split(X, Y, validation_ratio=0.2):
     valid_size = int(X.shape[1] * validation_ratio)
-    print(f"valid_size : {X.shape[1]}, {valid_size}")
     train_data = X[:,:-valid_size]
     train_label = Y[:-valid_size]
     valid_data = X[:,-valid_size:]
@@ -103,24 +102,33 @@ def update_params(alpha, layers):
     for layer in layers:
         layer.update_params(alpha)
 
-def gradient_descent(X, Y, layers, alpha, iterations):
+def gradient_descent(X, Y, layers, alpha, iterations, valid_data, valid_label):
     """
     For each layer execute forward and back propagation, update params e store accuracy
     """
-    accuracy = np.empty(iterations)
-    error = np.empty(iterations)
+    accuracy, error_train, error_valid = np.empty(iterations), np.empty(iterations), np.empty(iterations)
     for i in range(iterations):
         forward_prop(X, layers)
         one_hot_Y = one_hot(Y)
         backward_prop(X, one_hot_Y, layers)
         update_params(alpha, layers)
         accuracy[i] = current_accuracy(i, layers, Y)
-        error[i] = cross_entropy(one_hot_Y, layers[-1].A)
-    return accuracy, error
+
+        error_train[i] = get_current_error(one_hot_Y, layers)
+        error_valid[i] = get_current_error(valid_label, layers, forward=True, X=valid_data, apply_one_hot=True)
+    return accuracy, error_train, error_valid
 
 def current_accuracy(iteration, layers, Y):
     predictions = np.argmax(layers[-1].A, 0)
     return get_accuracy(predictions, Y)
+
+def get_current_error(Y, layers, forward=False, X=None, apply_one_hot=False):
+    if forward:
+        forward_prop(X, layers)
+    label = Y
+    if apply_one_hot:
+        label = one_hot(Y)
+    return cross_entropy(label, layers[-1].A)
 
 def get_accuracy(predictions, Y):
     return np.sum(predictions == Y) / Y.size

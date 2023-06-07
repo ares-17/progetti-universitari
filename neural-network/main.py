@@ -24,14 +24,16 @@ def main():
     for momentum in momentums:
         layers = [Layer((neurons, train_data.shape[0]), ReLU, ReLU_deriv, momentum)]
         print(f"starting momentum {momentum}")
-        accuracy, error = gradient_descent(train_data, train_label,layers, learning_rate, epochs)
+        accuracy, error_train, error_valid =  \
+            gradient_descent(train_data, train_label,layers, learning_rate, epochs, valid_data, valid_label)
         accuracies.append((momentum, accuracy))
         test_accuracy = make_predictions(test_data, layers)
         print(f"end momentum {momentum} with accuracy on train: {accuracy.max()}, on test: {get_accuracy(test_accuracy, test_label)}")
 
     compare_results(accuracies, f"momentum-analysis-{epochs}-epochs")
 
-    plt.plot(error, label="Train error")
+    plt.plot(error_train, label="Training error")
+    plt.plot(error_valid, label="Validation error")
     plt.xlabel("Epochs")
     plt.ylabel("Error")
     plt.legend()
