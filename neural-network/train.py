@@ -64,9 +64,6 @@ def cross_entropy(Y, A):
     return loss
 
 def forward_prop(X, layers):
-    """
-    For each level, forward propagation is performed and the output for the next level is stored.
-    """
     input_layer = X
     for layer in layers:
         layer.forward_prop(input_layer)
