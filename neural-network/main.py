@@ -2,7 +2,8 @@ import configparser
 from train import *
 import pandas as pd
 from Properties import *
-
+from Dataset import *
+from Analysis import *
 """
 Caratteristiche:
 1. dividere opportunatamente in training e test set con un rapporto approssimato a 1:4
@@ -16,60 +17,23 @@ Caratteristiche:
 
 def main():
     properties = read_properties()
-
-    (train_data, train_label), (test_data, test_label), (valid_data, valid_label) = data(shuffle=True)
-
-    layers = None
-    accuracies = []
+    ds = Dataset(shuffle=True)
+    analysis = Analysis()
 
     for neurons in properties.neurons:
         for rate in properties.learning_rate:
             for momentum in properties.momentum:
                 print(f"starting with: momentum {momentum}, learning_rate {rate}, neurons {neurons}")
-                layers = [
-                    Layer((neurons, train_data.shape[0]), ReLU, ReLU_deriv, momentum), 
-                    Layer((10, neurons), softmax, ReLU_deriv, momentum)
-                    ]
-                accuracy, error_train, error_valid =  \
-                    gradient_descent(train_data, train_label,layers, rate, \
-                        properties.epochs, valid_data, valid_label)
-                accuracies.append((momentum, accuracy))
-                test_accuracy = make_predictions(test_data, layers)
-                print(f"end momentum {momentum} with accuracy on train: {accuracy.max()}, on test: {get_accuracy(test_accuracy, test_label)}")
+                layers = get_layers(neurons, momentum, ds.train_data.shape[0])
+                analysis.partial(*gradient_descent(ds, layers, rate,properties.epochs), ds.test_data, layers)
+                print(f"end momentum {momentum} with accuracy on train: {analysis.accuracies[-1].max()}")
     
-    compare_results(accuracies, f"momentum-analysis-{properties.epochs}-epochs")
+    compare_results(analysis.accuracies, f"momentum-analysis-{properties.epochs}-epochs")
 
-    plt.plot(error_train, label="Training error")
-    plt.plot(error_valid, label="Validation error")
-    plt.xlabel("Epochs")
-    plt.ylabel("Error")
-    plt.legend()
-    plt.show()
-
-
-def make_predictions(X, layers):
-    """
-    Execute forward propagation on network and gets prediction's class from result's array
-    """
-    forward_prop(X, layers)
-    predictions = np.argmax(layers[-1].A, 0)
-    return predictions
-
-def test_prediction(index, layers, train_data, train_label):
-    """
-    Gets the index of the image in the train_data array, prints the expected class and the label class.
-    Next, visualize the image with matplotlib
-    """
-    current_image = train_data[:, index, None]
-    prediction = make_predictions(train_data[:, index, None], layers)
-    label = train_label[index]
-    print("Prediction: ", prediction)
-    print("Label: ", label)
-    
-    current_image = current_image.reshape((28, 28)) * 255
-    plt.gray()
-    plt.imshow(current_image, interpolation='nearest')
-    plt.show()
+def get_layers(neurons, momentum, columns):
+    return [Layer((neurons, columns), ReLU, ReLU_deriv, momentum), 
+            Layer((10, neurons), softmax, ReLU_deriv, momentum)
+    ]
 
 def read_properties() -> Properties:
     """

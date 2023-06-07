@@ -1,55 +1,9 @@
 import numpy as np
 import cv2
-from cache_functions import *
 from matplotlib import pyplot as plt
 from Layer import *
 import os
-
-def data(shuffle=False, with_cache=False):
-    """
-    Gets train's dataset, label and test's dataset, label from mnist.
-    Only on train and test dataset performs certain operations that simplify its access 
-    """
-    (train_data, train_label), (test_data, test_label) = get_mnist(with_cache)
-    if shuffle:
-        train_data, train_label = permutation(train_data, train_label)
-        test_data, test_label = permutation(test_data, test_label)
-
-    train_data = prepare_data(train_data)
-    test_data = prepare_data(test_data)
-
-    train_data, train_label, valid_data, valid_label =  \
-        train_validation_split(train_data, train_label)
-
-    return (train_data, train_label), (test_data, test_label), (valid_data, valid_label)
-
-def permutation(dataset, label):
-    permutation = np.random.permutation(dataset.shape[0])
-    dataset = dataset[permutation]
-    label = label[permutation]
-    return dataset, label
-
-def prepare_data(data):
-    """
-    Accepts arrays of 3 dimensions, with the last two identical.
-    Returns the same array by performing the operations:
-    1. transponse
-    2. resizing the dimensions to 2
-    3. normalization with respect to the value 255
-    """
-    shape = (data.shape[0], data.shape[1] * data.shape[1])
-    data = data.reshape(shape)
-    data = data.T
-    data = data / 255 
-    return data
-
-def train_validation_split(X, Y, validation_ratio=0.2):
-    valid_size = int(X.shape[1] * validation_ratio)
-    train_data = X[:,:-valid_size]
-    train_label = Y[:-valid_size]
-    valid_data = X[:,-valid_size:]
-    valid_label = Y[-valid_size:]
-    return train_data, train_label, valid_data, valid_label
+from Dataset import *
 
 def ReLU(Z):
     return np.maximum(Z, 0)
@@ -99,21 +53,21 @@ def update_params(alpha, layers):
     for layer in layers:
         layer.update_params(alpha)
 
-def gradient_descent(X, Y, layers, alpha, iterations, valid_data, valid_label):
+def gradient_descent(ds: Dataset, layers, alpha, iterations):
     """
     For each layer execute forward and back propagation, update params e store accuracy
     """
     accuracy, error_train, error_valid = np.empty(iterations), np.empty(iterations), np.empty(iterations)
+    one_hot_Y = one_hot(ds.train_label)
     for i in range(iterations):
-        forward_prop(X, layers)
-        one_hot_Y = one_hot(Y)
-        backward_prop(X, one_hot_Y, layers)
+        forward_prop(ds.train_data, layers)
+        backward_prop(ds.train_data, one_hot_Y, layers)
         update_params(alpha, layers)
-        accuracy[i] = current_accuracy(i, layers, Y)
+        accuracy[i] = current_accuracy(i, layers, ds.train_label)
 
         error_train[i] = get_current_error(one_hot_Y, layers)
-        error_valid[i] = get_current_error(valid_label, layers, forward=True, X=valid_data, apply_one_hot=True)
-    return accuracy, error_train, error_valid
+        error_valid[i] = get_current_error(ds.valid_label, layers, forward=True, X=ds.valid_data, apply_one_hot=True)
+    return (accuracy, error_train, error_valid)
 
 def current_accuracy(iteration, layers, Y):
     predictions = np.argmax(layers[-1].A, 0)
