@@ -14,8 +14,7 @@ def softmax(Z):
     
 def cross_entropy(Y, A):
     m = Y.shape[1]
-    loss = -np.sum(Y * np.log(A + 1e-8)) / m
-    return loss
+    return -np.sum(Y * np.log(A + 1e-8)) / m
 
 def forward_prop(X, layers):
     input_layer = X

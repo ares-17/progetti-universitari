@@ -1,23 +1,11 @@
-import configparser
 from train import *
 import pandas as pd
 from model.Properties import *
 from model.Dataset import *
 from model.Analysis import *
 
-"""
-Caratteristiche:
-1. dividere opportunatamente in training e test set con un rapporto approssimato a 1:4
-2. fissare la discesa del gradiente con il momento
-3. studiare l'andamento della rete per derivare:
-    - numero epoche necessarie all'apprendimento
-    - andamento errore su training e validation set, accuratezza su test set con un singolo strato al variare del learning rate
-        e dal momento per almeno 5 diverse dimensioni dello strato interno
-    - lasciare invariati parametri come funzioni di output
-"""
-
 def main():
-    properties = read_properties()
+    properties = Properties("properties.ini")
     ds = Dataset(shuffle=True)
     analysis = Analysis()
 
@@ -35,22 +23,6 @@ def get_layers(neurons, momentum, columns):
     return [Layer((neurons, columns), ReLU, ReLU_deriv, momentum), 
             Layer((10, neurons), softmax, ReLU_deriv, momentum)
     ]
-
-def read_properties() -> Properties:
-    """
-    Read some configs from properties file.
-    Does not handle any exceptions
-    """
-    config = configparser.ConfigParser()
-    config.read("properties.ini")
-    configurarion = config.get("main","configuration")
-
-    return Properties(
-        [int(num) for num in config.get(configurarion,"neurons").split(',')],
-        [float(num) for num in config.get(configurarion,"momentum").split(',')],
-        int(config.get(configurarion,"epochs")),
-        [float(num) for num in config.get(configurarion,"learning_rate").split(',')],
-    )
 
 if __name__ == "__main__":
     main()
