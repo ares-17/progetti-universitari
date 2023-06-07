@@ -2,22 +2,42 @@ import configparser
 from train import *
 import pandas as pd
 
+
+"""
+Caratteristiche:
+1. dividere opportunatamente in training e test set con un rapporto approssimato a 1:4
+2. fissare la discesa del gradiente con il momento
+3. studiare l'andamento della rete per derivare:
+    - numero epoche necessarie all'apprendimento
+    - andamento errore su training e validation set, accuratezza su test set con un singolo strato al variare del learning rate
+        e dal momento per almeno 5 diverse dimensioni dello strato interno
+    - lasciare invariati parametri come funzioni di output
+"""
+
 def main():
     neurons, layers, momentums, epochs, learning_rate = read_properties()
 
-    (train_data, train_label), (test_data, test_label), rows_dataset = data(shuffle=True)
+    (train_data, train_label), (test_data, test_label), (valid_data, valid_label) = data(shuffle=True)
 
     layers = None
-    accuracies = []
+    accuracies, error = [], []
     for momentum in momentums:
-        layers = [Layer((neurons, 784), ReLU, ReLU_deriv, momentum), Layer((neurons, 10), softmax, ReLU_deriv, momentum)]
+        layers = [Layer((neurons, train_data.shape[0]), ReLU, ReLU_deriv, momentum)]
         print(f"starting momentum {momentum}")
-        accuracy = gradient_descent(train_data, train_label,layers, learning_rate, epochs, rows_dataset)
+        accuracy, error_train, error_valid =  \
+            gradient_descent(train_data, train_label,layers, learning_rate, epochs, valid_data, valid_label)
         accuracies.append((momentum, accuracy))
         test_accuracy = make_predictions(test_data, layers)
         print(f"end momentum {momentum} with accuracy on train: {accuracy.max()}, on test: {get_accuracy(test_accuracy, test_label)}")
 
     compare_results(accuracies, f"momentum-analysis-{epochs}-epochs")
+
+    plt.plot(error_train, label="Training error")
+    plt.plot(error_valid, label="Validation error")
+    plt.xlabel("Epochs")
+    plt.ylabel("Error")
+    plt.legend()
+    plt.show()
 
 
 def make_predictions(X, layers):
