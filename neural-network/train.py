@@ -1,9 +1,9 @@
 import numpy as np
 import cv2
 from matplotlib import pyplot as plt
-from Layer import *
+from model.Layer import *
 import os
-from Dataset import *
+from model.Dataset import *
 
 def ReLU(Z):
     return np.maximum(Z, 0)
@@ -67,7 +67,7 @@ def gradient_descent(ds: Dataset, layers, alpha, iterations):
 
         error_train[i] = get_current_error(one_hot_Y, layers)
         error_valid[i] = get_current_error(ds.valid_label, layers, forward=True, X=ds.valid_data, apply_one_hot=True)
-    return (accuracy, error_train, error_valid)
+    return accuracy, error_train, error_valid
 
 def current_accuracy(iteration, layers, Y):
     predictions = np.argmax(layers[-1].A, 0)
@@ -89,7 +89,7 @@ def compare_results(accuracies, name):
     Print on axis the accuracies calculated with gradient descent.
     """
     for accuracy in accuracies:
-        plt.plot(accuracy[1], label=f"Accuracy with {accuracy[0]} momentum")
+        plt.plot(accuracy, label=f"Accuracy momentum")
     plt.xlabel("Epochs")
     plt.ylabel("Accuracy")
     plt.legend()

@@ -1,9 +1,10 @@
 import configparser
 from train import *
 import pandas as pd
-from Properties import *
-from Dataset import *
-from Analysis import *
+from model.Properties import *
+from model.Dataset import *
+from model.Analysis import *
+
 """
 Caratteristiche:
 1. dividere opportunatamente in training e test set con un rapporto approssimato a 1:4
