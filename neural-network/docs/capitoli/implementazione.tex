@@ -1,0 +1,181 @@
+\chapter{Implementazione}
+Il progetto è scritto in Python 3.11 e segue quanto descritto precedentemente, rimanendo flessibile per l'introduzione di nuove feature. \\
+Di seguito una breve introduzione della disposizione e caratteristiche dei file:
+\begin{itemize}
+    \item \textbf{main.py} : inizializza gli oggetti principali ed esegue la fase di addestramento della rete in base ai parametri definiti per poi valutarne i risultati
+    \item \textbf{train.py} : definizione dei metodi per la fase di addestramento oltre che funzioni di attivazione e di errore
+    \item package model
+    \begin{itemize}
+        \item \textbf{Dataset.py}: carica il dataset MNIST negli insiemi train, validation, error con i corrispettivi insiemi di valori target 
+        \item \textbf{Analysis.py} : metodi per lo storage in memory dei dati parziali ottenuti dalle combinazioni dei parametri di input. Definisce anche metodi per la creazione di grafici comparativi
+        \item \textbf{Layer.py} : astrae e incapsula uno strato (interno o non che sia), fornendo i metodi per la fase di addestramento
+        \item \textbf{Properties.py} : definizione di metodi per lettura dei parametri di test stabiliti.
+    \end{itemize}
+\end{itemize}
+
+\subsection{Definizione parametri}
+Il paragrafo della definizione dei parametri è anteposto per consentire al lettore una facile interpretazione dei paragrafi successivi. \\
+I parametri sono definiti nel file \underline{properties.ini} nella seguente forma:
+\begin{lstlisting}[language=C]
+[main]
+configuration = test
+...
+[test]
+neurons = 10
+momentum =  0.9
+epochs = 100
+learning_rate = 0.10
+\end{lstlisting}
+Dove il valore definito in \texttt{configuration} indica quale serie di parametri sono considerati, in tal caso quelli contenuti nel gruppo "test". \\
+La variabile \texttt{neurons} indica il numero di neuroni contenuti nel singolo strato interno della rete mentre lo strato di output è composto in ogni modo da 10 neuroni.\\
+La variabile \texttt{momentum} è un gruppo di valori, separati da virgole, che indica per ogni iterazione del test quali valori considerare. A tutti gli strati sono associati gli stessi valori del momentum considerato. \\
+Il termine \texttt{epochs} indica il numero di test considerati con epoche diverse. \\
+Il \texttt{learning\_rate} indica la serie di valori da considerare nell'aggiornamento dei pesi. Ogni valore è considerato sull'intera rete. \\
+
+\subsection{Creazione della rete}
+La creazione della rete si basa sulla definizione dello strato interno e dello strato di output specificando le funzioni di attivazioni, le corrispettive derivate, nonché il numero di neuroni e il numero di neuroni dello strato precedente per definire la matrice di pesi e dei bias.
+\begin{lstlisting}[language=Python]
+def get_layers(neurons, momentum, columns):
+    return [
+        Layer((neurons, columns), ReLU, ReLU_deriv, momentum), 
+        Layer((10, neurons), softmax, ReLU_deriv, momentum)
+    ]
+\end{lstlisting}
+Il parametro \texttt{neurons} contiene il numero di neuroni definito nel file \underline{properties.ini}, mentre \texttt{columns} il numero di feature dello strato di input. \\
+L'istanziazione della classe \texttt{Layer} avviene con la chiamata al costruttore:
+\begin{lstlisting}[language=Python]
+class Layer:
+    def __init__(self,shape,activation,derivative,momentum= 0):
+        self.W = np.random.rand(shape[0], shape[1]) - 0.5
+        self.B = np.random.rand(shape[0], 1) - 0.5
+        self.activation = activation
+        self.derivative = derivative
+        self.momentum = momentum
+        self.dW_prev = np.zeros_like(self.W)
+        self.db_prev = np.zeros_like(self.B)
+        self.A, self.Z, self.dZ, self.db, self.dW = \ 
+            None, None, None, None, None
+\end{lstlisting}
+La matrice dei pesi e dei bias è definita con valori generati casualmente seguendo una distribuzione uniforme. I membri \texttt{dW\_prev} e \texttt{db\_prev} definiscono rispettivamente la derivata dei pesi precedente e la derivata dei bias precedente ed hanno le stesse dimensioni matriciali delle rispettive matrici. Essi risultano utili nel calcolo dell'aggiornamento dei pesi considerando il momentum. \\
+
+\subsection{Fase di Training}
+La fase di training è definita dal metodo principale \texttt{gradient\_descent} e definisce i passaggi base dell'algoritmo.
+\begin{lstlisting}[language=Python]
+def gradient_descent(ds: Dataset, layers, alpha, iterations):
+    accuracy, error_train, error_valid =  ... # empty arrays
+    one_hot_Y = one_hot(ds.train_label)
+    for i in range(iterations):
+        forward_prop(ds.train_data, layers)
+        backward_prop(ds.train_data, one_hot_Y, layers)
+        update_params(alpha, layers)
+        
+        accuracy[i] = current_accuracy()
+        error_train[i] = get_current_error()
+        error_valid[i] =  get_current_error()
+    return accuracy, error_train, error_valid
+\end{lstlisting}
+Prima delle iterazioni di training è applicata la funzione \texttt{one\_hot} all'array di valori target così da ottenere una matrice con soli valori \texttt{0} ed \texttt{1} : \texttt{1} associa il valore in input ad una classe di output determinata dall'indice della riga. \\
+Per ogni iterazione è compiuto una predizione per ogni input del dataset chiamando il metodo \texttt{forward\_prop}, è eseguito l'algoritmo di back propagation per determinare l'errore compiuto e i nuovi valori da assegnare ai pesi e ai bias con il metodo \texttt{update\_params}. \\
+Il metodo di propagazione in avanti è definito come :
+\begin{lstlisting}[language=Python]
+def forward_prop(X, layers):
+    input_layer = X
+    for layer in layers:
+        layer.forward_prop(input_layer)
+        input_layer = layer.A
+
+class Layer:
+    # ... other functions
+    def forward_prop(self, input):
+        self.Z = self.W.dot(input) + self.B
+        self.A = self.activation(self.Z)
+\end{lstlisting}
+Dove ad ogni passo è ridefinita la variabile \texttt{input\_layer} come output dello strato precedente, per il primo strato invece i valori del dataset. \\
+L'algoritmo di back propagation è definito come:
+\begin{lstlisting}[language=Python]
+def backward_prop(X, one_hot_Y, layers):
+    input_layers = [X]
+    for index in range(len(layers) - 1):
+        input_layers.append(layers[index].A)
+
+    dZ = layers[-1].A - one_hot_Y
+    for index in range(len(layers) - 1, -1, -1):
+        current = layers[index]
+        current.
+            backward_prop(dZ, input_layers[index], X.shape[1])
+        if index - 1 > - 1:
+            dZ = current.W.T.dot(dZ) *  \ 
+                current.derivative(layers[index - 1].Z)
+
+class Layer:
+    # ... other functions
+    def backward_prop(self, dZ, input, m):
+        self.dZ = dZ
+        self.dW = 1 / m * self.dZ.dot(input.T)
+        self.db = 1 / m * np.sum(self.dZ)
+\end{lstlisting}
+La funzione raccoglie prima i valori di output di ogni strato nel vettore \texttt{input\_layers} per poi calcolare le derivate, in base alla funzione definita per ognuna di essi. Il calcolo delle derivate è compiuto eseguendo il ciclo dallo strato di output al primo, dove la derivata dell'ultimo strato è calcolata al di fuori del ciclo nella variabile \texttt{dZ}. \\
+L'algoritmo di aggiornamento dei pesi è composto da:
+\begin{lstlisting}[language=Python]
+def update_params(alpha, layers):
+    for layer in layers:
+        layer.update_params(alpha)
+
+class Layer:
+    # ... other functions
+    def update_params(self, alpha):
+        self.dW = self.momentum * \ 
+            self.dW_prev - alpha * self.dW
+        self.db = self.momentum * \
+            self.db_prev - alpha * self.db
+        
+        self.W += self.dW
+        self.B += self.db
+        self.dW_prev = self.dW
+        self.db_prev = self.db
+\end{lstlisting}
+La regola applicata è la seguente:
+\begin{align*}
+w_{i,j} = - \eta * \frac{d}{dw_{i,j}}E^t + \alpha \cdot \Delta w_{i,j}^{t-1}
+\end{align*}
+
+
+
+
+\subsection{Fase di Analisi}
+I dati raccolti durante la fase di addestramento sono poi interpretati con grafici nella fase di analisi. \\
+La fase di analisi è compiuta dalla classe \texttt{Analysis} che ad ogni esecuzione di nuovo addestramento con una nuova combinazione dei parametri definiti dall'utente, raccoglie: l'errore compiuto sul training e validation set, oltre che l'accuratezza ottenuta, ad ogni epoca, sul test set. \\
+\begin{lstlisting}[language=Python]
+class Analysis:
+    def __init__(self):
+        self.accuracies = []
+        self.errors_train = []
+        self.errors_valid = []
+        self.test_accuracy = []
+
+    def partial(self, accuracy, error_train, error_valid, test_data, layers):
+        self.accuracies.append(accuracy)
+        self.errors_train.append(error_train)
+        self.errors_valid.append(error_valid)
+        self.test_accuracy = 
+            self.make_predictions(test_data, layers)
+
+    def make_predictions(self, X, layers):
+        forward_prop(X, layers)
+        predictions = np.argmax(layers[-1].A, 0)
+        return predictions
+
+    def test_prediction(self, index, layers, X, Y):
+        current_image = X[:, index, None]
+        prediction = 
+            self.make_predictions(X[:, index, None], layers)
+        label = Y[index]
+        print("Prediction: ", prediction)
+        print("Label: ", label)
+        
+        current_image = current_image.reshape((28, 28)) * 255
+        plt.gray()
+        plt.imshow(current_image, interpolation='nearest')
+        plt.show()
+\end{lstlisting}
+Il metodo \texttt{partial} raccoglie ad ogni fine addestramento i risulati ottenuti, mentre il metodo \texttt{make\_prediction} esegue una propagazione in avanti sul dataset passato come parametro. Il metodo \texttt{test\_prediction} mostra a video l'elemento del dataset \texttt{X} indicizzato da \texttt{index}, per testare visivamente un singolo risultato ottenuto comparando il contenuto dell'immagine da quanto otttenuto dalla propagazione in avanti.\\

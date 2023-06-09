@@ -9,15 +9,16 @@ def main():
     ds = Dataset(shuffle=True)
     analysis = Analysis()
 
+    print(f"epochs for each training : {properties.epochs}")
     for neurons in properties.neurons:
         for rate in properties.learning_rate:
             for momentum in properties.momentum:
-                print(f"starting with: momentum {momentum}, learning_rate {rate}, neurons {neurons}")
                 layers = get_layers(neurons, momentum, ds.train_data.shape[0])
-                analysis.partial(*gradient_descent(ds, layers, rate,properties.epochs), ds.test_data, layers)
-                print(f"end momentum {momentum} with accuracy on train: {analysis.accuracies[-1].max()}")
+                results = gradient_descent(ds, layers, rate, properties.epochs)
+                analysis.partial(neurons, rate, momentum, *results)
+                print(f"end with: momentum {momentum}, learning_rate {rate}, neurons {neurons}, accuracy: {results[2]}")
     
-    compare_results(analysis.accuracies, f"momentum-analysis-{properties.epochs}-epochs")
+    analysis.save_charts()
 
 def get_layers(neurons, momentum, columns):
     return [Layer((neurons, columns), ReLU, ReLU_deriv, momentum), 

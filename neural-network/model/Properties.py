@@ -14,7 +14,7 @@ class Properties:
         Does not handle any exceptions
         """
         config = configparser.ConfigParser()
-        config.read("properties.ini")
+        config.read(filename)
         configurarion = config.get("main","configuration")
 
         self.neurons  = [int(num) for num in config.get(configurarion,"neurons").split(',')]
