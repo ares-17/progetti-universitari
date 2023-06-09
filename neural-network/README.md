@@ -9,6 +9,19 @@ La rete neurale si propone di:
          e dal momento per almeno 5 diverse dimensioni dello strato interno
       - lasciare invariati parametri come funzioni di output
 
+Sviluppi mancanti:
+- scambiare l'utilizzo delle variabili A con Z
+- definire le due funzioni di errore ed utilizzarle
+- definire la derivata di softmax ed utilizzarla
+- permettere la scelta della funzione di attivazione
+
+Risultati da riportare:
+- per 10 neuroni
+- per 20 neuroni
+- per 50 neuroni
+- per 100 neuroni
+- per 250 neuroni 
+
 ## Local installation
 To run the project on your operating system make sure you already have python 3 installed and then install the following packages:
 ```

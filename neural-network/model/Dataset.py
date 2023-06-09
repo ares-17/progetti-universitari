@@ -3,8 +3,9 @@ from cache_functions import *
 
 class Dataset:
     def __init__(self, shuffle=False, validation_ratio=0.2):
-        self.train_data, self.train_label, self.test_data, self.test_label, self.valid_data, self.valid_label = \
-        None, None, None, None, None, None
+        self.train_data, self.train_label, self.test_data,  \
+            self.test_label, self.valid_data, self.valid_label = \
+                None, None, None, None, None, None
 
         self.shuffle = shuffle
         self.validation_ratio = validation_ratio

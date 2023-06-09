@@ -62,11 +62,11 @@ def gradient_descent(ds: Dataset, layers, alpha, iterations):
         forward_prop(ds.train_data, layers)
         backward_prop(ds.train_data, one_hot_Y, layers)
         update_params(alpha, layers)
-        accuracy[i] = current_accuracy(i, layers, ds.train_label)
 
+        accuracy[i] = current_accuracy(i, layers, ds.train_label)
         error_train[i] = get_current_error(one_hot_Y, layers)
         error_valid[i] = get_current_error(ds.valid_label, layers, forward=True, X=ds.valid_data, apply_one_hot=True)
-    return accuracy, error_train, error_valid
+    return error_train, error_valid, accuracy.max()
 
 def current_accuracy(iteration, layers, Y):
     predictions = np.argmax(layers[-1].A, 0)
