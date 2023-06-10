@@ -12,8 +12,8 @@ class Layer:
         self.A, self.Z, self.dZ, self.db, self.dW = None, None, None, None, None
 
     def forward_prop(self, input):
-        self.Z = self.W.dot(input) + self.B
-        self.A = self.activation(self.Z)
+        self.A = self.W.dot(input) + self.B
+        self.Z = self.activation(self.A)
 
     def backward_prop(self, dZ, input, m):
         self.dZ = dZ

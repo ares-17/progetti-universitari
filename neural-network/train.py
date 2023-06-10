@@ -8,22 +8,40 @@ from model.Dataset import *
 def ReLU(Z):
     return np.maximum(Z, 0)
 
+def sigmoide(a):
+	return 1 / (1+np.exp(-a))
+
+def sigmoide_deriv(a):
+	z = sigmoide(a)
+	return z * (1 - z)
+
 def softmax(Z):
-    A = np.exp(Z) / sum(np.exp(Z))
-    return A
+    return np.exp(Z) / sum(np.exp(Z))
     
-def cross_entropy(Y, A):
+def cross_entropy(Y, Z):
     m = Y.shape[1]
-    return -np.sum(Y * np.log(A + 1e-8)) / m
+    return -np.sum(Y * np.log(Z + 1e-8)) / m
+
+def cross_entropy_deriv(y, t):
+	return -(t / y)
+
+def ReLU_deriv(Z):
+    return Z > 0
+
+def sum_of_square(predizione_rete, label):
+	y = np.array(predizione_rete)
+	t = np.array(label)
+
+	return 0.5 * np.sum(np.square(y - t))
+
+def sum_of_square_deriv(y, t):
+	return y - t
 
 def forward_prop(X, layers):
     input_layer = X
     for layer in layers:
         layer.forward_prop(input_layer)
-        input_layer = layer.A
-
-def ReLU_deriv(Z):
-    return Z > 0
+        input_layer = layer.Z
 
 def one_hot(Y):
     one_hot_Y = np.zeros((Y.size, Y.max() + 1))
@@ -39,9 +57,9 @@ def backward_prop(X, one_hot_Y, layers):
     """
     input_layers = [X]
     for index in range(len(layers) - 1):
-        input_layers.append(layers[index].A)
+        input_layers.append(layers[index].Z)
 
-    dZ = layers[-1].A - one_hot_Y
+    dZ = layers[-1].Z - one_hot_Y
     for index in range(len(layers) - 1, -1, -1):
         current = layers[index]
         current.backward_prop(dZ, input_layers[index], X.shape[1])
@@ -52,7 +70,7 @@ def update_params(alpha, layers):
     for layer in layers:
         layer.update_params(alpha)
 
-def gradient_descent(ds: Dataset, layers, alpha, iterations):
+def gradient_descent(ds: Dataset, layers, alpha, iterations, error_function):
     """
     For each layer execute forward and back propagation, update params e store accuracy
     """
@@ -78,7 +96,7 @@ def get_current_error(Y, layers, forward=False, X=None, apply_one_hot=False):
     label = Y
     if apply_one_hot:
         label = one_hot(Y)
-    return cross_entropy(label, layers[-1].A)
+    return cross_entropy(label, layers[-1].Z)
 
 def get_accuracy(predictions, Y):
     return np.sum(predictions == Y) / Y.size

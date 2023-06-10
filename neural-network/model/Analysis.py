@@ -44,7 +44,7 @@ class Analysis:
         Execute forward propagation on network and gets prediction's class from result's array
         """
         forward_prop(X, layers)
-        predictions = np.argmax(layers[-1].A, 0)
+        predictions = np.argmax(layers[-1].Z, 0)
         return predictions
 
     def test_prediction(self, index, layers, X, Y):
