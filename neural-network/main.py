@@ -33,7 +33,7 @@ def init_logs():
 
 def write_logs(event):
     line = '\n' + event + datetime.datetime.now().strftime(', at %H:%M:%S - %d/%m/%Y')
-    with open("events.logs","a") as file:
+    with open("events.log","a") as file:
         file.write(line)
 
 if __name__ == "__main__":
