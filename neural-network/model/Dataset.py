@@ -39,6 +39,10 @@ class Dataset:
         self.train_data, self.train_label, self.valid_data, self.valid_label =  \
             self.train_validation_split(self.train_data, self.train_label)
 
+        self.train_label = self.one_hot(self.train_label)
+        self.valid_label = self.one_hot(self.valid_label)
+        self.test_label = self.one_hot(self.test_label)
+
     def permutation(self, dataset, label):
         permutation = np.random.permutation(dataset.shape[0])
         dataset = dataset[permutation]
@@ -53,7 +57,7 @@ class Dataset:
         2. resizing the dimensions to 2
         3. normalization with respect to the value 255
         """
-        data = self.resize_images(data)
+        #data = self.resize_images(data)
         shape = (data.shape[0], data.shape[1] * data.shape[1])
         data = data.reshape(shape)
         data = data.T
@@ -76,3 +80,9 @@ class Dataset:
         valid_data = X[:,-valid_size:]
         valid_label = Y[-valid_size:]
         return train_data, train_label, valid_data, valid_label
+
+    def one_hot(self, Y):
+        one_hot_Y = np.zeros((Y.size, Y.max() + 1))
+        one_hot_Y[np.arange(Y.size), Y] = 1
+        one_hot_Y = one_hot_Y.T
+        return one_hot_Y

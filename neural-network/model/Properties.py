@@ -15,6 +15,10 @@ class Properties:
         'identity': {
             'function': identity,
             'derivative': identity_deriv
+        },
+        'tanh': {
+            'function': tanh,
+            'derivative': tanh_deriv
         }
     }
 
