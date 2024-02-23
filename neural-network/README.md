@@ -10,7 +10,6 @@ La rete neurale si propone di:
       - lasciare invariati parametri come funzioni di output
 
 Sviluppi mancanti:
-- scambiare l'utilizzo delle variabili A con Z
 - definire le due funzioni di errore ed utilizzarle
 - definire la derivata di softmax ed utilizzarla
 - permettere la scelta della funzione di attivazione
@@ -21,6 +20,8 @@ Risultati da riportare:
 - per 50 neuroni
 - per 100 neuroni
 - per 250 neuroni 
+
+Per eseguire la build dell'immagine per la realizzazione di PDF, eseguire il comando ```docker build -t tex-to-pdf -f Latex.Dockerfile . ```
 
 ## Local installation
 To run the project on your operating system make sure you already have python 3 installed and then install the following packages:

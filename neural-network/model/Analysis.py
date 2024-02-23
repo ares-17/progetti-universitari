@@ -38,27 +38,3 @@ class Analysis:
 
     def get_result_path(name):
         return os.path.join(os.getcwd(), "results", name + ".png")
-
-    def make_predictions(self, X, layers):
-        """
-        Execute forward propagation on network and gets prediction's class from result's array
-        """
-        forward_prop(X, layers)
-        predictions = np.argmax(layers[-1].A, 0)
-        return predictions
-
-    def test_prediction(self, index, layers, X, Y):
-        """
-        Gets the index of the image in the X array, prints the expected class and the label class.
-        Next, visualize the image with matplotlib
-        """
-        current_image = X[:, index, None]
-        prediction = self.make_predictions(X[:, index, None], layers)
-        label = Y[index]
-        print("Prediction: ", prediction)
-        print("Label: ", label)
-        
-        current_image = current_image.reshape((28, 28)) * 255
-        plt.gray()
-        plt.imshow(current_image, interpolation='nearest')
-        plt.show()
